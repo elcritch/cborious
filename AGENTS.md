@@ -2,19 +2,12 @@
 
 ## Project Structure & Module Organization
 - `src/`: Main Nim sources. Entry point: `src/cborious.nim`.
-- `tests/`: Unit and integration tests. Standalone test programs (e.g., `tbasics.nim`, `testintegration.nim`) plus fixture workspaces under `tests/ws_*`.
-- `bin/`: Local development builds (`bin/atlas`).
-- `doc/`: Documentation (`doc/atlas.md`).
-- Top-level config: `atlas.nimble` (package meta), `config.nims` (dev tasks), `nim.cfg` (compiler flags).
+- `tests/`: Unit and integration tests. Standalone test programs (e.g., `tbasics.nim`, `tints.nim`).
+- Top-level config: `cborious.nimble` (package meta), `config.nims` (dev tasks), `nim.cfg` (compiler flags).
 
 ## Build, Test, and Development Commands
-- Build (debug): `nim build` — compiles to `bin/` via `config.nims`.
-- Build (release): `nim buildRelease` — creates an optimized binary (cross‑arch rules inside `config.nims`).
-- Run all tests: `nim test` — downloads test repos (if missing), runs unit and integration suites.
-- Unit tests only: `nim unitTests`
-- Integration tests: `nim tester`
+- Run tests: `nim test`
 - Docs: `nim docs` or `nimble docs`
-- Try the CLI: `bin/atlas --help`
 
 ## Coding Style & Naming Conventions
 - Language: Nim 2.x (`requires "nim >= 2.0.0"`).
@@ -30,9 +23,9 @@
 ## Commit & Pull Request Guidelines
 - Commits: short imperative subject (≤72 chars), optional scope (e.g., `test:`, `fix:`), reference issues/PRs (e.g., `(#152)`).
 - PRs must include: clear description of motivation and approach, linked issues, test coverage (new/updated tests), and any CLI output diffs or logs if behavior changed.
-- CI expectations: ensure `nim test` and `nim build` pass locally before opening the PR.
+- CI expectations: ensure `nim test`.
 
 ## Security & Configuration Tips
 - Do not commit secrets. `deps/` is project‑local for consumers; in this repo, keep focus on source, tests, and configs.
-- When modifying dependency resolution or config handling, document changes in `doc/atlas.md` and add targeted tests in `tests/`.
+- When modifying dependency resolution or config handling, document changes in `readme.md` and add targeted tests in `tests/`.
 
