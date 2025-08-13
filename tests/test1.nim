@@ -10,5 +10,6 @@ import unittest
 import cborious
 
 test "encode/decode simple":
-  let enc = encode(42)
-  check decodeInt(enc) == 42
+  var buf: seq[byte]
+  encode(buf, 42)
+  check decode(int, buf) == 42

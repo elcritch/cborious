@@ -18,9 +18,9 @@ proc encode*(b: bool): seq[byte] =
 
 proc decodeInt64*(src: openArray[byte]): int64 =
   var consumed = 0
-  let (v, err) = reader.decodeInt64(src, 0, consumed)
-  if err != ceNone or consumed != src.len:
-    raise newException(ValueError, "Invalid CBOR int64")
+  let v = reader.decodeInt64(src, 0, consumed)
+  if consumed != src.len:
+    raiseCbor(ceInvalidArg, "extra bytes after int64")
   v
 
 proc decodeInt*(src: openArray[byte]): int =
@@ -28,7 +28,16 @@ proc decodeInt*(src: openArray[byte]): int =
 
 proc decodeBool*(src: openArray[byte]): bool =
   var consumed = 0
-  let (v, err) = reader.decodeBool(src, 0, consumed)
-  if err != ceNone or consumed != src.len:
-    raise newException(ValueError, "Invalid CBOR bool")
+  let v = reader.decodeBool(src, 0, consumed)
+  if consumed != src.len:
+    raiseCbor(ceInvalidArg, "extra bytes after bool")
   v
+
+# Parameter-overloaded front API, msgpack4nim-style
+proc encode*(dst: var seq[byte], x: int) {.inline.} = writer.encode(dst, x)
+proc encode*(dst: var seq[byte], x: int64) {.inline.} = writer.encode(dst, x)
+proc encode*(dst: var seq[byte], b: bool) {.inline.} = writer.encode(dst, b)
+
+proc decode*(T: typedesc[int], src: openArray[byte]): int = decodeInt(src)
+proc decode*(T: typedesc[int64], src: openArray[byte]): int64 = decodeInt64(src)
+proc decode*(T: typedesc[bool], src: openArray[byte]): bool = decodeBool(src)

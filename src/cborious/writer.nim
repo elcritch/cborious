@@ -1,5 +1,3 @@
-import std/bitops
-import std/strformat
 import types
 
 {.push checks: off.}
@@ -50,3 +48,14 @@ proc encodeBool*(b: bool): seq[byte] =
   ## Encode a Nim bool into CBOR simple value true/false.
   result = @[]
   result.add(if b: 0xf5'u8.byte else: 0xf4'u8.byte)
+
+# Overloaded destination-parameter style encoders (msgpack4nim-like)
+proc encode*(dst: var seq[byte], x: int64) =
+  let s = encodeInt64(x)
+  dst.add(s)
+
+proc encode*(dst: var seq[byte], x: int) =
+  dst.encode(x.int64)
+
+proc encode*(dst: var seq[byte], b: bool) =
+  dst.add(if b: 0xf5'u8.byte else: 0xf4'u8.byte)

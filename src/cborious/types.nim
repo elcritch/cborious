@@ -19,5 +19,13 @@ type
     ceInvalidArg
     ceOverflow
 
+  CborException* = object of CatchableError
+    code*: CborError
+
 const
   aiIndef* = 31'u8
+
+proc raiseCbor*(code: CborError, msg: string) {.noreturn.} =
+  var e = newException(CborException, msg)
+  e.code = code
+  raise e
