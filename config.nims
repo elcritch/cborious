@@ -1,13 +1,10 @@
 import std/[os, strutils, sequtils, algorithm]
 
 proc listTestFiles(): seq[string] =
-  var files: seq[string]
-  for pat in ["tests/t*.nim", "tests/test*.nim"]:
-    for f in walkFiles(pat):
-      files.add f
-  files = files.deduplicate()
-  files.sort()
-  result = files
+  # Use staticExec to remain NimScript-compatible
+  let listing = staticExec("sh -lc 'ls -1 tests/t*.nim tests/test*.nim 2>/dev/null || true'")
+  result = listing.splitLines().filterIt(it.len > 0).deduplicate()
+  result.sort()
 
 task unitTests, "Run unit tests (fast)":
   let files = listTestFiles()
@@ -28,10 +25,9 @@ task test, "Run full test suite":
 
 task docs, "Generate API docs to docs/api":
   let outDir = "docs/api"
-  if not dirExists(outDir): createDir(outDir)
-  var files: seq[string]
-  for f in walkDirRec("src"):
-    if f.endsWith(".nim"): files.add f
+  exec "sh -lc 'mkdir -p " & outDir & "'"
+  let listing2 = staticExec("sh -lc 'find src -type f -name " & "\'*.nim\'" & " -print 2>/dev/null || true'")
+  var files = listing2.splitLines().filterIt(it.len > 0)
   files.sort()
   if files.len == 0:
     echo "No Nim sources found under src/."
