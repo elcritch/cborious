@@ -8,5 +8,7 @@
 import unittest
 
 import cborious
-test "can add":
-  check add(5, 5) == 10
+
+test "encode/decode simple":
+  let enc = encode(42)
+  check decodeInt(enc) == 42
