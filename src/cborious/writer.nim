@@ -1,4 +1,3 @@
-import types
 import std/streams
 import cborious/stream as cstream
 
@@ -20,6 +19,42 @@ proc encodeBool*(b: bool): seq[byte] =
   cstream.encode(s, b)
   s.toBytes()
 
+# Additional specialized encode functions following msgpack4nim pattern
+proc encodeInt8*(x: int8): seq[byte] =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  s.toBytes()
+
+proc encodeInt16*(x: int16): seq[byte] =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  s.toBytes()
+
+proc encodeInt32*(x: int32): seq[byte] =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  s.toBytes()
+
+proc encodeUint8*(x: uint8): seq[byte] =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  s.toBytes()
+
+proc encodeUint16*(x: uint16): seq[byte] =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  s.toBytes()
+
+proc encodeUint32*(x: uint32): seq[byte] =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  s.toBytes()
+
+proc encodeUint64*(x: uint64): seq[byte] =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  s.toBytes()
+
 # Overloaded destination-parameter style encoders (msgpack4nim-like)
 proc encode*(dst: var seq[byte], x: int64) =
   let s = CborStream.init()
@@ -27,6 +62,42 @@ proc encode*(dst: var seq[byte], x: int64) =
   dst.add(s.toBytes())
 
 proc encode*(dst: var seq[byte], x: int) =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  dst.add(s.toBytes())
+
+# Additional specialized integer encoders following msgpack4nim pattern
+proc encode*(dst: var seq[byte], x: int8) =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  dst.add(s.toBytes())
+
+proc encode*(dst: var seq[byte], x: int16) =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  dst.add(s.toBytes())
+
+proc encode*(dst: var seq[byte], x: int32) =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  dst.add(s.toBytes())
+
+proc encode*(dst: var seq[byte], x: uint8) =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  dst.add(s.toBytes())
+
+proc encode*(dst: var seq[byte], x: uint16) =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  dst.add(s.toBytes())
+
+proc encode*(dst: var seq[byte], x: uint32) =
+  let s = CborStream.init()
+  cstream.encode(s, x)
+  dst.add(s.toBytes())
+
+proc encode*(dst: var seq[byte], x: uint64) =
   let s = CborStream.init()
   cstream.encode(s, x)
   dst.add(s.toBytes())
