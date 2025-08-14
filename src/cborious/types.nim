@@ -12,20 +12,11 @@ type
     mtTag      = 6
     mtSimple   = 7
 
-  CborError* = enum
-    ceNone
-    ceEndOfBuffer
-    ceInvalidHeader
-    ceInvalidArg
-    ceOverflow
-
   CborException* = object of CatchableError
-    code*: CborError
+  CborEndOfBufferError* = object of CborException
+  CborInvalidHeaderError* = object of CborException
+  CborInvalidArgError* = object of CborException
+  CborOverflowError* = object of CborException
 
 const
   aiIndef* = 31'u8
-
-proc raiseCbor*(code: CborError, msg: string) {.noreturn.} =
-  var e = newException(CborException, msg)
-  e.code = code
-  raise e

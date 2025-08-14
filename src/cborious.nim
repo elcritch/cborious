@@ -20,7 +20,7 @@ proc decodeInt64*(src: openArray[byte]): int64 =
   var consumed = 0
   let v = reader.decodeInt64(src, 0, consumed)
   if consumed != src.len:
-    raiseCbor(ceInvalidArg, "extra bytes after int64")
+    raise newException(CborInvalidArgError, "extra bytes after int64")
   v
 
 proc decodeInt*(src: openArray[byte]): int =
@@ -30,7 +30,7 @@ proc decodeBool*(src: openArray[byte]): bool =
   var consumed = 0
   let v = reader.decodeBool(src, 0, consumed)
   if consumed != src.len:
-    raiseCbor(ceInvalidArg, "extra bytes after bool")
+    raise newException(CborInvalidArgError, "extra bytes after bool")
   v
 
 # Parameter-overloaded front API, msgpack4nim-style
