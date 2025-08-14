@@ -38,7 +38,7 @@ proc decode*[T](typ: typedesc[T], data: openArray[byte]): T =
 proc encode*[T](val: T): seq[byte] = pack(val)
 
 # Stream-based API directly from stream module  
-export stream.pack, stream.unpack, stream.pack_type, stream.unpack_type
+export stream.pack, stream.unpack, stream.packType, stream.unpackType
 
 # Re-export the stream type for direct use
 export stream.CborStream
