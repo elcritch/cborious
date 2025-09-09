@@ -76,3 +76,13 @@ proc init*(x: typedesc[CborStream], data: sink string): CborStream =
 proc init*(x: typedesc[CborStream], cap: int = 0): CborStream =
   ## Initialize a CborStream with capacity.
   result = init(x, newStringOfCap(cap))
+
+proc readExactStr*(s: Stream, length: int): string =
+  ## Reads a string from a stream, like `Stream.readStr`, but raises IOError if it's truncated.
+  result = readStr(s, length)
+  if result.len != length: raise newException(IOError, "string len mismatch")
+
+proc readExactStr*(s: Stream, length: int, str: var string) =
+  ## Reads a string from a stream, like `Stream.readStr`, but raises IOError if it's truncated.
+  readStr(s, length, str)
+  if str.len != length: raise newException(IOError, "string len mismatch")
