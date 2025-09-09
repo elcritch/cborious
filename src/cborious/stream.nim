@@ -88,3 +88,9 @@ proc readExactStr*(s: Stream, length: int, str: var string) =
   ## Reads a string from a stream, like `Stream.readStr`, but raises IOError if it's truncated.
   readStr(s, length, str)
   if str.len != length: raise newException(IOError, "string len mismatch")
+
+proc toBytes*(s: CborStream): seq[byte] =
+  ## Return the underlying buffer as bytes.
+  result = newSeq[byte](s.data.len)
+  for i, ch in s.data:
+    result[i] = byte(uint8(ord(ch)))
