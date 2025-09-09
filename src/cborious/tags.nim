@@ -10,11 +10,11 @@ const
   CborTagDateTimeString* = 0.CborTag
   CborTagEpochSeconds*   = 1.CborTag
 
-proc cborTag*(tp: typedesc[DateTime]): CborTag =
-  result = CborTagDateTimeString
+# proc cborTag*(tp: typedesc[DateTime]): CborTag =
+#   result = CborTagDateTimeString
 
-proc cborTag*(tp: typedesc[Time]): CborTag =
-  result = CborTagEpochSeconds
+# proc cborTag*(tp: typedesc[Time]): CborTag =
+#   result = CborTagEpochSeconds
 
 proc pack_tagged*[T](s: Stream, tag: CborTag, val: T) =
   ## Pack a value with a preceding tag.

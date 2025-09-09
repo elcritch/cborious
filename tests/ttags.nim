@@ -14,7 +14,7 @@ suite "CBOR tags & timestamps":
     var s = CborStream.init()
     s.pack_tagged(dt)
     # C0 (tag 0), then length-prefixed string
-    checkPackToString(s.data, "\xc0\x74")
+    checkPackToString(s.data, "\xC0\x742013-03-21T20:04:00Z")
     # Unpack as string should ignore tag
     s.setPosition(0)
     let txt = unpack(s, string)
@@ -34,6 +34,7 @@ suite "CBOR tags & timestamps":
   test "tag 0: decode into DateTime using format":
     var s = CborStream.init()
     s.pack_tagged(0.CborTag, "2013-03-21T20:04:00Z")
+    echo "Packed date: ", s.data.repr()
     s.setPosition(0)
 
     var dt: DateTime
