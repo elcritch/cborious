@@ -25,8 +25,7 @@ proc cborPackInt*(s: Stream, v: uint64, maj: CborMajor) =
 
 # Public pack_type overloads
 proc pack_type*(s: Stream, val: bool) =
-  if val: s.write(char(0xf5'u8)) else: s.write(char(0xf4'u8))
-  # writeInitial(s, CborMajor.Simple, uint8(val) + 4'u8)
+  writeInitial(s, CborMajor.Simple, uint8(val) + 20'u8)
 
 proc pack_type*(s: Stream, val: uint64) = cborPackInt(s, val, CborMajor.Unsigned)
 proc pack_type*(s: Stream, val: uint32) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
