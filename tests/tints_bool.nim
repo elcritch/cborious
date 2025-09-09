@@ -32,16 +32,16 @@ suite "CBOR ints and bools":
   test "canonical encodings bytes":
     # Selected spot checks to ensure minimal-length encodings
     var buf = CborStream.init()
-    check packToString(0)    == @[0x00'u8]
-    check packToString(1)    == @[0x01'u8]
-    check packToString(10)   == @[0x0a'u8]
-    check packToString(23)   == @[0x17'u8]
-    check packToString(24)   == @[0x18'u8, 0x18'u8]
-    check packToString(255)  == @[0x18'u8, 0xff'u8]
-    check packToString(256)  == @[0x19'u8, 0x01'u8, 0x00'u8]
-    check packToString(-1)   == @[0x20'u8]
-    check packToString(-10)  == @[0x29'u8]
-    check packToString(-24)  == @[0x37'u8]
-    check packToString(-25)  == @[0x38'u8, 0x18'u8]
-    check packToString(true) == @[0xf5'u8]
-    check packToString(false)== @[0xf4'u8]
+    check packToString(0)    == "\x00"
+    check packToString(1)    == "\x01"
+    check packToString(10)   == "\x0a"
+    check packToString(23)   == "\x17"
+    check packToString(24)   == "\x18\x18"
+    check packToString(255)  == "\x18\xff"
+    check packToString(256)  == "\x19\x01\x00"
+    check packToString(-1)   == "\x20"
+    check packToString(-10)  == "\x29"
+    check packToString(-24)  == "\x37"
+    check packToString(-25)  == "\x38\x18"
+    check packToString(true) == "\xf5"
+    check packToString(false)== "\xf4"
