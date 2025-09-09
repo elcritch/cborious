@@ -48,12 +48,12 @@ proc pack_tagged*(s: Stream, dt: DateTime) =
   ## Encode DateTime as tag(0) + RFC 3339 style string using provided format.
   ## Default includes timezone offset; ensure dt has correct zone.
   let txt = dt.format(datetimeFmt)
-  s.pack_type(txt)
+  s.pack_tagged(CborTagDateTimeString, txt)
 
 proc pack_tagged*(s: Stream, t: Time) =
   ## Encode Time as tag(1) + integer seconds since Unix epoch.
   let secs = t.toUnix
-  s.pack_type(int64(secs))
+  s.pack_tagged(CborTagEpochSeconds, int64(secs))
 
 proc unpack_tagged*(s: Stream, dt: var DateTime) =
   ## Decode tag(0) timestamp string into DateTime using provided format.
