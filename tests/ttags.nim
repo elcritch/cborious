@@ -4,15 +4,19 @@ import std/strutils
 import cborious
 import cborious/tags
 
+template checkPackToString[T](v: T, expected: string) =
+  echo "checking " & $v & " (" & $typeof(v) & ")" & " to " & expected.repr()
+  check packToString(v).repr() == expected.repr()
+
 suite "CBOR tags & timestamps":
   test "tag 0: RFC3339 string roundtrip & generic skip":
     var dt = initDateTime(21, mMar, 2013, 20, 4, 0, zone = utc())
     var s = CborStream.init()
     s.pack_tagged(dt)
     # C0 (tag 0), then length-prefixed string
-    check s.data.startsWith("\xc0\x74")
-    s.setPosition(0)
+    checkPackToString(s.data, "\xc0\x74")
     # Unpack as string should ignore tag
+    s.setPosition(0)
     let txt = unpack(s, string)
     check txt == "2013-03-21T20:04:00Z"
 

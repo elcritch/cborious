@@ -2,7 +2,7 @@ import unittest
 import std/tables
 import cborious
 
-proc checkPackToString[T](v: T, expected: string) =
+template checkPackToString[T](v: T, expected: string) =
   echo "checking " & $v & " (" & $typeof(v) & ")" & " to " & expected.repr()
   check packToString(v).repr() == expected.repr()
 
