@@ -22,11 +22,13 @@ suite "CBOR ints and bools":
 
   test "bools":
     var buf = CborStream.init()
-    buf.setPosition(0);
-    pack(buf, true);
+
+    buf.setPosition(0)
+    pack(buf, true)
     check unpack(buf, bool) == true
-    buf.setPosition(0);
-    pack(buf, false);
+
+    buf.setPosition(0)
+    pack(buf, false)
     check unpack(buf, bool) == false
 
   test "canonical encodings bytes":
