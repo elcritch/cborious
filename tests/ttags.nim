@@ -29,7 +29,7 @@ suite "CBOR tags & timestamps":
 
   test "tag 0: decode into DateTime using format":
     var s = CborStream.init()
-    s.packTag(0)
+    s.packTag(0.CborTag)
     s.pack("2013-03-21T20:04:00Z")
     s.setPosition(0)
     let dt = cbortimes.unpackTimestampString(s, "yyyy-MM-dd'T'HH:mm:ss'Z'")

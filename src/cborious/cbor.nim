@@ -211,32 +211,32 @@ proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.
 
 # ---- Tags (major type 6) generic helpers ----
 
-proc packTag*(s: Stream, tag: uint64) =
+proc packTag*(s: Stream, tag: CborTag) =
   ## Writes a CBOR tag header with the given tag value.
-  cborPackInt(s, tag, CborMajor.Tag)
+  cborPackInt(s, tag.uint64, CborMajor.Tag)
 
-proc packTagged*[T](s: Stream, tag: uint64, val: T) =
+proc packTagged*[T](s: Stream, tag: CborTag, val: T) =
   ## Pack a value with a preceding tag.
   s.packTag(tag)
   s.pack_type(val)
 
-proc readOneTag*(s: Stream, tagOut: var uint64): bool =
+proc readOneTag*(s: Stream, tagOut: var CborTag): bool =
   ## Reads a single tag if present, returns true and sets tagOut. Restores position when not a tag.
   let pos = s.getPosition()
   let (m, ai) = s.readInitial()
   if m == CborMajor.Tag:
-    tagOut = s.readAddInfo(ai)
+    tagOut = s.readAddInfo(ai).CborTag
     return true
   s.setPosition(pos)
   return false
 
-proc unpackExpectTag*[T](s: Stream, tag: uint64, value: var T) =
+proc unpackExpectTag*[T](s: Stream, tag: CborTag, value: var T) =
   ## Requires the next item to be a tag with the specified id, then unpacks a value of type T.
   let (m, ai) = s.readInitial()
   if m != CborMajor.Tag:
     raise newException(CborInvalidHeaderError, "expected tag")
   let t = s.readAddInfo(ai)
-  if t != tag:
+  if t != tag.uint64:
     raise newException(CborInvalidHeaderError, "unexpected tag value")
   s.unpack_type(value)
 
