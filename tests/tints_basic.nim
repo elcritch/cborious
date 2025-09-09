@@ -32,14 +32,14 @@ suite "CBOR basic ints":
   test "canonical encodings at 16/32/64-bit boundaries":
     # Unsigned thresholds
     check packToString(65535)          == "\x19\xff\xff"
-    # check pack(65536)          == @[0x1a'u8, 0x00'u8, 0x01'u8, 0x00'u8, 0x00'u8]
-    # check pack(4294967295'i64) == @[0x1a'u8, 0xff'u8, 0xff'u8, 0xff'u8, 0xff'u8]
-    # check pack(4294967296'i64) == @[0x1b'u8, 0x00'u8, 0x00'u8, 0x00'u8, 0x01'u8, 0x00'u8, 0x00'u8, 0x00'u8, 0x00'u8]
+    check packToString(65536)          == "\x1a\x00\x01\x00\x00"
+    check packToString(4294967295'i64) == "\x1a\xff\xff\xff\xff"
+    check packToString(4294967296'i64) == "\x1b\x00\x00\x00\x01\x00\x00\x00\x00"
     # # Negative thresholds (encode n where v = -(n+1))
-    # check pack(-256)           == @[0x38'u8, 0xff'u8]
-    # check pack(-257)           == @[0x39'u8, 0x01'u8, 0x00'u8]
-    # check pack(-65536)         == @[0x39'u8, 0xff'u8, 0xff'u8]
-    # check pack(-65537)         == @[0x3a'u8, 0x00'u8, 0x01'u8, 0x00'u8, 0x00'u8]
-    # check pack(-4294967296'i64)== @[0x3a'u8, 0xff'u8, 0xff'u8, 0xff'u8, 0xff'u8]
-    # check pack(-4294967297'i64)== @[0x3b'u8, 0x00'u8, 0x00'u8, 0x00'u8, 0x01'u8, 0x00'u8, 0x00'u8, 0x00'u8, 0x00'u8]
+    check packToString(-256)           == "\x38\xff"
+    check packToString(-257)           == "\x39\x01\x00"
+    check packToString(-65536)         == "\x39\xff\xff"
+    check packToString(-65537)         == "\x3a\x00\x01\x00\x00"
+    check packToString(-4294967296'i64)== "\x3a\xff\xff\xff\xff"
+    check packToString(-4294967297'i64)== "\x3b\x00\x00\x00\x01\x00\x00\x00\x00"
 
