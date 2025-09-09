@@ -218,7 +218,7 @@ suite "CBOR basics":
       check d == t2
 
   test "maps (ordered) (canonical + roundtrip)":
-    # OrderedTable roundtrip
+    # OrderedTable roundtrip (order may change with canonical packing)
     block:
       var ot: OrderedTable[string, string]
       ot["y"] = "world"
@@ -228,7 +228,22 @@ suite "CBOR basics":
       echo "packed ", ot, " to: ", s.data.repr()
       s.setPosition(0)
       var d = unpack(s, OrderedTable[string, string])
-      check d == ot
+      var tOrig = initTable[string, string]()
+      for k, v in ot: tOrig[k] = v
+      var tDec = initTable[string, string]()
+      for k, v in d: tDec[k] = v
+      check tDec == tOrig
+
+    # Non-canonical packing on base Stream preserves insertion order for OrderedTable
+    block:
+      var ot2: OrderedTable[string, int]
+      ot2["aa"] = 1
+      ot2["b"] = 2
+      var s2 = newStringStream("")
+      pack(s2, ot2) # s2 is not CborStream, so non-canonical
+      let enc = s2.data
+      # Expect order: 'aa' then 'b'
+      check enc == "\xa2\x62aa\x01\x61b\x02"
 
   test "map canonical ordering (deterministic)":
     # String keys of different lengths: 'b' sorts before 'aa'

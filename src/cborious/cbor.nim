@@ -203,24 +203,43 @@ proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.
 
 # Map (major type 5)
 proc pack_type*[K, V](s: Stream, val: Table[K, V]) =
-  # Deterministic ordering per RFC 8949: sort by canonical CBOR bytes of keys
-  var items: seq[tuple[keyEnc: string, k: K, v: V]]
-  items.setLen(0)
-  for k, v in val.pairs:
-    var ks = CborStream.init()
-    ks.pack_type(k)
-    items.add((move ks.data, k, v))
-  items.sort(proc(a, b: typeof(items[0])): int = cmp(a.keyEnc, b.keyEnc))
-  s.packLen(items.len, CborMajor.Map)
-  for it in items:
-    for ch in it.keyEnc: s.write(ch)
-    s.pack_type(it.v)
+  # Canonical only when using CborStream (msgpack4nim-style stream check)
+  if s of CborStream:
+    var items: seq[tuple[keyEnc: string, k: K, v: V]]
+    items.setLen(0)
+    for k, v in val.pairs:
+      var ks = CborStream.init()
+      ks.pack_type(k)
+      items.add((move ks.data, k, v))
+    items.sort(proc(a, b: typeof(items[0])): int = cmp(a.keyEnc, b.keyEnc))
+    s.packLen(items.len, CborMajor.Map)
+    for it in items:
+      for ch in it.keyEnc: s.write(ch)
+      s.pack_type(it.v)
+  else:
+    s.packLen(val.len, CborMajor.Map)
+    for k, v in val.pairs:
+      s.pack_type(k)
+      s.pack_type(v)
 
 proc pack_type*[K, V](s: Stream, val: OrderedTable[K, V]) =
-  s.packLen(val.len, CborMajor.Map)
-  for k, v in val.pairs:
-    s.pack_type(k)
-    s.pack_type(v)
+  if s of CborStream:
+    var items: seq[tuple[keyEnc: string, k: K, v: V]]
+    items.setLen(0)
+    for k, v in val.pairs:
+      var ks = CborStream.init()
+      ks.pack_type(k)
+      items.add((move ks.data, k, v))
+    items.sort(proc(a, b: typeof(items[0])): int = cmp(a.keyEnc, b.keyEnc))
+    s.packLen(items.len, CborMajor.Map)
+    for it in items:
+      for ch in it.keyEnc: s.write(ch)
+      s.pack_type(it.v)
+  else:
+    s.packLen(val.len, CborMajor.Map)
+    for k, v in val.pairs:
+      s.pack_type(k)
+      s.pack_type(v)
 
 
 # ---- Decoding helpers ----
