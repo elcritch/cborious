@@ -2,7 +2,7 @@ import unittest
 import cborious
 
 proc checkPackToString[T](v: T, expected: string) =
-  checkpoint "checking " & $v & " (" & $typeof(v) & ")"
+  echo "checking " & $v & " (" & $typeof(v) & ")"
   check packToString(v).repr() == expected.repr()
 
 suite "CBOR basics":
