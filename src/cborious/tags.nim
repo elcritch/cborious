@@ -16,7 +16,7 @@ proc cborTag*(tp: typedesc[DateTime]): CborTag =
 proc cborTag*(tp: typedesc[Time]): CborTag =
   result = CborTagEpochSeconds
 
-proc pack_tagged_impl*[T](s: Stream, tag: CborTag, val: T) =
+proc pack_tagged*[T](s: Stream, tag: CborTag, val: T) =
   ## Pack a value with a preceding tag.
   s.pack_tag(tag)
   s.pack_type(val)

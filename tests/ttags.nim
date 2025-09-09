@@ -29,7 +29,7 @@ suite "CBOR tags & timestamps":
 
   test "tag 0: decode into DateTime using format":
     var s = CborStream.init()
-    s.pack_tagged_impl(0.CborTag, "2013-03-21T20:04:00Z")
+    s.pack_tagged(0.CborTag, "2013-03-21T20:04:00Z")
     s.setPosition(0)
 
     var dt: DateTime
