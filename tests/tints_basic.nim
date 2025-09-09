@@ -8,6 +8,7 @@ suite "CBOR basic ints":
     for v in [0, 1, 23, 24, 255, 256, 65535, 65536, 4294967295'i64]:
       buf.setPosition(0)
       pack(buf, int64(v))
+      echo "packed ", v, " to: ", buf.data.repr()
       let d = unpack(buf, int64)
       check d == int64(v)
 
