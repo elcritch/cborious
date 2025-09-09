@@ -49,3 +49,8 @@ suite "CBOR basic ints":
     check packToString(-65537)         == "\58\000\001\000\000"
     check packToString(-4294967296'i64)== "\58\255\255\255\255"
     check packToString(-4294967297'i64)== "\59\000\000\000\001\000\000\000\000"
+
+    check packToString(65535)          == "\25\255\255"
+    check packToString(65536)          == "\26\0\1\0\0"
+    check packToString(4294967295'i64) == "\26\255\255\255\255"
+    check packToString(4294967296'i64) == "\27\000\000\000\001\000\000\000\000"
