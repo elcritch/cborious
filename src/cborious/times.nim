@@ -1,0 +1,44 @@
+import std/times
+import std/strutils
+import ./stream
+import ./cbor
+
+# CBOR Timestamp helpers using Nim's std/times
+
+const
+  CborTagDateTimeString* = 0'u64
+  CborTagEpochSeconds*   = 1'u64
+
+proc packTimestampString*(s: Stream, dt: DateTime, fmt = "yyyy-MM-dd'T'HH:mm:sszzz") =
+  ## Encode DateTime as tag(0) + RFC 3339 style string using provided format.
+  ## Default includes timezone offset; ensure dt has correct zone.
+  let txt = dt.format(fmt)
+  s.packTagged(CborTagDateTimeString, txt)
+
+proc packTimestamp*(s: Stream, t: Time) =
+  ## Encode Time as tag(1) + integer seconds since Unix epoch.
+  let secs = t.toUnix
+  s.packTagged(CborTagEpochSeconds, int64(secs))
+
+proc unpackTimestampString*(s: Stream, fmt = "yyyy-MM-dd'T'HH:mm:sszzz", assumeZone: Timezone = utc()): DateTime =
+  ## Decode tag(0) timestamp string into DateTime using provided format.
+  ## If the format does not include an offset (no 'z'), the parsed DateTime is assigned assumeZone.
+  var str: string
+  s.unpackExpectTag(CborTagDateTimeString, str)
+  var dt: DateTime
+  if 'z' in fmt:
+    dt = parse(str, fmt)
+  elif "'Z'" in fmt:
+    let fmt2 = fmt.replace("'Z'", "zzz")
+    let str2 = str.replace("Z", "+00:00")
+    dt = parse(str2, fmt2)
+  else:
+    let tmp = parse(str, fmt)
+    dt = initDateTime(tmp.monthday, tmp.month, tmp.year, tmp.hour, tmp.minute, tmp.second, zone = assumeZone)
+  result = dt
+
+proc unpackTimestamp*(s: Stream): Time =
+  ## Decode tag(1) integer seconds into Time.
+  var secs: int64
+  s.unpackExpectTag(CborTagEpochSeconds, secs)
+  result = fromUnix(secs)

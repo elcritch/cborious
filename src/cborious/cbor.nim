@@ -209,21 +209,36 @@ proc pack_type*[T](s: Stream, val: openArray[T]) =
 
 proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.high))
 
-# ---- Tags (major type 6) ----
+# ---- Tags (major type 6) generic helpers ----
 
 proc packTag*(s: Stream, tag: uint64) =
   ## Writes a CBOR tag header with the given tag value.
   cborPackInt(s, tag, CborMajor.Tag)
 
-proc packTimestampString*(s: Stream, rfc3339: string) =
-  ## Tag 0: date/time string per RFC 3339.
-  s.packTag(0)
-  s.pack_type(rfc3339)
+proc packTagged*[T](s: Stream, tag: uint64, val: T) =
+  ## Pack a value with a preceding tag.
+  s.packTag(tag)
+  s.pack_type(val)
 
-proc packTimestamp*(s: Stream, epochSeconds: int64) =
-  ## Tag 1: epoch-based date/time in seconds since 1970-01-01T00:00Z.
-  s.packTag(1)
-  s.pack_type(epochSeconds)
+proc readOneTag*(s: Stream, tagOut: var uint64): bool =
+  ## Reads a single tag if present, returns true and sets tagOut. Restores position when not a tag.
+  let pos = s.getPosition()
+  let (m, ai) = s.readInitial()
+  if m == CborMajor.Tag:
+    tagOut = s.readAddInfo(ai)
+    return true
+  s.setPosition(pos)
+  return false
+
+proc unpackExpectTag*[T](s: Stream, tag: uint64, value: var T) =
+  ## Requires the next item to be a tag with the specified id, then unpacks a value of type T.
+  let (m, ai) = s.readInitial()
+  if m != CborMajor.Tag:
+    raise newException(CborInvalidHeaderError, "expected tag")
+  let t = s.readAddInfo(ai)
+  if t != tag:
+    raise newException(CborInvalidHeaderError, "unexpected tag value")
+  s.unpack_type(value)
 
 # Map (major type 5)
 proc pack_type*[K, V](s: Stream, val: Table[K, V]) =
@@ -294,7 +309,7 @@ proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
 
 # ---- Decoding for new types ----
 
-proc unpack_type*(s: Stream, val: var seq[byte]) =
+proc unpack_type*(s: Stream, val: var seq[uint8]) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Binary:
     raise newException(CborInvalidHeaderError, "expected binary string")
