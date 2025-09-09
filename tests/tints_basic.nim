@@ -8,16 +8,16 @@ suite "CBOR basic ints":
     for v in [0, 1, 23, 24, 255, 256, 65535, 65536, 4294967295'i64]:
       buf.setPosition(0)
       pack(buf, int64(v))
-      let dec = unpack(buf, int64)
-      check dec == int64(v)
+      let d = unpack(buf, int64)
+      check d == int64(v)
 
   test "roundtrip selected negative ints":
     var buf = CborStream.init()
     for v in [-1'i64, -10, -24, -25, -255, -256, -65535, -65536, -4294967296'i64]:
       buf.setPosition(0)
       pack(buf, v)
-      let dec = unpack(buf, int64)
-      check dec == v
+      let d = unpack(buf, int64)
+      check d == v
 
   test "canonical encodings at 16/32/64-bit boundaries":
     # Unsigned thresholds
