@@ -8,7 +8,7 @@ suite "CBOR tags & timestamps":
   test "tag 0: RFC3339 string roundtrip & generic skip":
     var dt = initDateTime(21, mMar, 2013, 20, 4, 0, zone = utc())
     var s = CborStream.init()
-    s.packTimestampString(dt, "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    s.packTimestampString(dt)
     # C0 (tag 0), then length-prefixed string
     check s.data.startsWith("\xc0\x74")
     s.setPosition(0)
