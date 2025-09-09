@@ -10,6 +10,12 @@ const
   CborTagDateTimeString* = 0.CborTag
   CborTagEpochSeconds*   = 1.CborTag
 
+proc cborTag*(tp: typedesc[DateTime]): CborTag =
+  result = CborTagDateTimeString
+
+proc cborTag*(tp: typedesc[Time]): CborTag =
+  result = CborTagEpochSeconds
+
 proc packTimestampString*(s: Stream, dt: DateTime, fmt = "yyyy-MM-dd'T'HH:mm:sszzz") =
   ## Encode DateTime as tag(0) + RFC 3339 style string using provided format.
   ## Default includes timezone offset; ensure dt has correct zone.
