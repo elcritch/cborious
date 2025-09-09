@@ -7,54 +7,37 @@ template writeInitial*(s: Stream, major: CborMajor, ai: uint8) =
   s.write(char(((uint8(major) shl 5) or (ai and 0x1f))))
 
 # Encode unsigned integer (major type 0)
-proc cborPackUInt*(s: Stream, v: uint64) =
+proc cborPackInt*(s: Stream, v: uint64, maj: CborMajor) =
   if v <= 23'u64:
-    s.writeInitial(CborMajor.Unsigned, uint8(v))
+    s.writeInitial(maj, uint8(v))
   elif v <= 0xff'u64:
-    s.writeInitial(CborMajor.Unsigned, 24'u8)
+    s.writeInitial(maj, 24'u8)
     s.write(char(uint8(v)))
   elif v <= 0xffff'u64:
-    s.writeInitial(CborMajor.Unsigned, 25'u8)
+    s.writeInitial(maj, 25'u8)
     s.store16(uint16(v))
   elif v <= 0xffff_ffff'u64:
-    s.writeInitial(CborMajor.Unsigned, 26'u8)
+    s.writeInitial(maj, 26'u8)
     s.store32(uint32(v))
   else:
-    s.writeInitial(CborMajor.Unsigned, 27'u8)
+    s.writeInitial(maj, 27'u8)
     s.store64(v)
-
-# Encode negative integer (major type 1): value is -(n+1)
-proc cborPackNInt*(s: Stream, v: int64) =
-  ## v must be negative
-  let n = uint64(-1'i64 - v) # converts as per CBOR: encode n where v = -(n+1)
-  if n <= 23'u64:
-    s.writeInitial(CborMajor.Negative, uint8(n))
-  elif n <= 0xff'u64:
-    s.writeInitial(CborMajor.Negative, 24'u8)
-    s.write(char(uint8(n)))
-  elif n <= 0xffff'u64:
-    s.writeInitial(CborMajor.Negative, 25'u8)
-    s.store16(uint16(n))
-  elif n <= 0xffff_ffff'u64:
-    s.writeInitial(CborMajor.Negative, 26'u8)
-    s.store32(uint32(n))
-  else:
-    s.writeInitial(CborMajor.Negative, 27'u8)
-    s.store64(n)
 
 # Public pack_type overloads
 proc pack_type*(s: Stream, val: bool) =
   if val: s.write(char(0xf5'u8)) else: s.write(char(0xf4'u8))
 
-proc pack_type*(s: Stream, val: uint64) = cborPackUInt(s, val)
-proc pack_type*(s: Stream, val: uint32) = cborPackUInt(s, uint64(val))
-proc pack_type*(s: Stream, val: uint16) = cborPackUInt(s, uint64(val))
-proc pack_type*(s: Stream, val: uint8)  = cborPackUInt(s, uint64(val))
-proc pack_type*(s: Stream, val: uint)   = cborPackUInt(s, uint64(val))
+proc pack_type*(s: Stream, val: uint64) = cborPackInt(s, val, CborMajor.Unsigned)
+proc pack_type*(s: Stream, val: uint32) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
+proc pack_type*(s: Stream, val: uint16) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
+proc pack_type*(s: Stream, val: uint8)  = cborPackInt(s, uint64(val), CborMajor.Unsigned)
+proc pack_type*(s: Stream, val: uint)   = cborPackInt(s, uint64(val), CborMajor.Unsigned)
 
 proc pack_type*(s: Stream, val: int64) =
-  if val >= 0: cborPackUInt(s, uint64(val))
-  else: cborPackNInt(s, val)
+  if val >= 0:
+    cborPackInt(s, uint64(val), CborMajor.Unsigned)
+  else:
+    cborPackInt(s, uint64(-1'i64 - val), CborMajor.Negative)
 
 proc pack_type*(s: Stream, val: int32) = pack_type(s, int64(val))
 proc pack_type*(s: Stream, val: int16) = pack_type(s, int64(val))
