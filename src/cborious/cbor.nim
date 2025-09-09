@@ -68,10 +68,12 @@ proc readAddInfo*(s: Stream, ai: uint8): uint64 =
     raise newException(CborInvalidHeaderError, "invalid integer additional info")
 
 proc unpack_type*(s: Stream, val: var bool) =
-  let b = uint8(ord(s.readChar()))
-  case b
-  of 0xf4'u8: val = false
-  of 0xf5'u8: val = true
+  let (major, ai) = s.readInitial()
+  if major != CborMajor.Simple:
+    raise newException(CborInvalidHeaderError, "expected simple value")
+  case ai
+  of 20'u8: val = false
+  of 21'u8: val = true
   else:
     raise newException(CborInvalidHeaderError, "expected CBOR bool")
 
