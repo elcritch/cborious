@@ -1,4 +1,5 @@
 import unittest
+import std/tables
 import cborious
 
 proc checkPackToString[T](v: T, expected: string) =
@@ -192,3 +193,37 @@ suite "CBOR basics":
     buf.setPosition(0)
     let sd = unpack(buf, seq[string])
     check sd == sa
+
+  test "maps (canonical + roundtrip)":
+    # Empty map canonical
+    block:
+      var t0 = initTable[string, int]()
+      check packToString(t0) == "\xa0"
+
+    # Single entry canonical bytes: {"a": 1}
+    block:
+      var t1 = initTable[string, int]()
+      t1["a"] = 1
+      check packToString(t1) == "\xa1\x61a\x01"
+
+    # Roundtrip small maps
+    block:
+      var t2 = initTable[string, int]()
+      t2["a"] = 1
+      t2["b"] = 2
+      var s = CborStream.init()
+      pack(s, t2)
+      s.setPosition(0)
+      var d = unpack(s, Table[string, int])
+      check d == t2
+
+    # OrderedTable roundtrip
+    block:
+      var ot: OrderedTable[string, string]
+      ot["x"] = "hello"
+      ot["y"] = "world"
+      var s = CborStream.init()
+      pack(s, ot)
+      s.setPosition(0)
+      var d = unpack(s, OrderedTable[string, string])
+      check d == ot

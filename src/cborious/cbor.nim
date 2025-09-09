@@ -1,5 +1,6 @@
 import ./types
 import ./stream
+import std/tables
 
 # ---- CBOR core encode/decode (ints, bools) ----
 
@@ -199,6 +200,19 @@ proc pack_type*[T](s: Stream, val: openArray[T]) =
 
 proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.high))
 
+# Map (major type 5)
+proc pack_type*[K, V](s: Stream, val: Table[K, V]) =
+  s.packLen(val.len, CborMajor.Map)
+  for k, v in val.pairs:
+    s.pack_type(k)
+    s.pack_type(v)
+
+proc pack_type*[K, V](s: Stream, val: OrderedTable[K, V]) =
+  s.packLen(val.len, CborMajor.Map)
+  for k, v in val.pairs:
+    s.pack_type(k)
+    s.pack_type(v)
+
 
 # ---- Decoding helpers ----
 
@@ -268,3 +282,38 @@ proc unpack_type*[T](s: Stream, val: var seq[T]) =
     while i < n:
       s.unpack_type(val[i])
       inc i
+
+proc unpack_type*[K, V](s: Stream, val: var Table[K, V]) =
+  let (major, ai) = s.readInitial()
+  if major != CborMajor.Map:
+    raise newException(CborInvalidHeaderError, "expected map")
+  val.clear()
+  if ai == aiIndef:
+    while true:
+      let pos = s.getPosition()
+      let b = s.readChar()
+      if uint8(ord(b)) == 0xff'u8: break
+      s.setPosition(pos)
+      var k: K
+      var v: V
+      s.unpack_type(k)
+      s.unpack_type(v)
+      val[k] = v
+  else:
+    let n = int(s.readAddInfo(ai))
+    if n < 0: raise newException(CborInvalidHeaderError, "negative length")
+    var i = 0
+    while i < n:
+      var k: K
+      var v: V
+      s.unpack_type(k)
+      s.unpack_type(v)
+      val[k] = v
+      inc i
+
+proc unpack_type*[K, V](s: Stream, val: var OrderedTable[K, V]) =
+  var tmp: Table[K, V]
+  s.unpack_type(tmp)
+  val.clear()
+  for k, v in tmp:
+    val[k] = v
