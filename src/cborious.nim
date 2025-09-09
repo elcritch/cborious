@@ -12,7 +12,7 @@ export stream, types, cbor
 proc packToString*[T](val: T): string =
   var s = CborStream.init(sizeof(T))
   s.pack_type(val)
-  result = s.data
+  result = move s.data
 
 proc unpackFromString*[T](data: string, val: var T) =
   var s = CborStream.init(data)
