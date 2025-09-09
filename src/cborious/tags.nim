@@ -10,18 +10,15 @@ const
   CborTagDateTimeString* = 0.CborTag
   CborTagEpochSeconds*   = 1.CborTag
 
-proc cborTag*(tp: typedesc[DateTime]): CborTag =
+proc cbor_tag*(tp: typedesc[DateTime]): CborTag =
   result = CborTagDateTimeString
 
-proc cborTag*(tp: typedesc[Time]): CborTag =
+proc cbor_tag*(tp: typedesc[Time]): CborTag =
   result = CborTagEpochSeconds
-
-# proc cborTag*[T](s: Stream, tp: typedesc[T]): CborTag =
-#   result = CborTag(tp.name.hash)
 
 proc packTagged*[T](s: Stream, val: T) =
   ## Pack a value with a preceding tag.
-  s.packTag(cborTag(T))
+  s.pack_tag(cbor_tag(T))
   s.pack_type(val)
 
 proc readOneTag*(s: Stream, tagOut: var CborTag): bool =

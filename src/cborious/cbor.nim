@@ -211,7 +211,7 @@ proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.
 
 # ---- Tags (major type 6) generic helpers ----
 
-proc packTag*(s: Stream, tag: CborTag) =
+proc pack_tag*(s: Stream, tag: CborTag) =
   ## Writes a CBOR tag header with the given tag value.
   cborPackInt(s, tag.uint64, CborMajor.Tag)
 
