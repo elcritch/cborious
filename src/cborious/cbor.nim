@@ -69,8 +69,16 @@ proc readAddInfo*(s: Stream, ai: uint8): uint64 =
   else:
     raise newException(CborInvalidHeaderError, "invalid integer additional info")
 
+proc readInitialSkippingTags*(s: Stream): tuple[major: CborMajor, ai: uint8] =
+  ## Reads the next initial byte, skipping one or more leading tag items.
+  while true:
+    let (m, ai) = s.readInitial()
+    if m != CborMajor.Tag:
+      return (m, ai)
+    discard s.readAddInfo(ai)
+
 proc unpack_type*(s: Stream, val: var bool) =
-  let (major, ai) = s.readInitial()
+  let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Simple:
     raise newException(CborInvalidHeaderError, "expected simple value")
   case ai
@@ -80,13 +88,13 @@ proc unpack_type*(s: Stream, val: var bool) =
     raise newException(CborInvalidHeaderError, "expected CBOR bool")
 
 proc unpack_type*(s: Stream, val: var uint64) =
-  let (major, ai) = s.readInitial()
+  let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Unsigned:
     raise newException(CborInvalidHeaderError, "expected unsigned integer")
   val = s.readAddInfo(ai)
 
 proc unpack_type*(s: Stream, val: var int64) =
-  let (major, ai) = s.readInitial()
+  let (major, ai) = s.readInitialSkippingTags()
   case major
   of CborMajor.Unsigned:
     let u = s.readAddInfo(ai)
@@ -201,6 +209,22 @@ proc pack_type*[T](s: Stream, val: openArray[T]) =
 
 proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.high))
 
+# ---- Tags (major type 6) ----
+
+proc packTag*(s: Stream, tag: uint64) =
+  ## Writes a CBOR tag header with the given tag value.
+  cborPackInt(s, tag, CborMajor.Tag)
+
+proc packTimestampString*(s: Stream, rfc3339: string) =
+  ## Tag 0: date/time string per RFC 3339.
+  s.packTag(0)
+  s.pack_type(rfc3339)
+
+proc packTimestamp*(s: Stream, epochSeconds: int64) =
+  ## Tag 1: epoch-based date/time in seconds since 1970-01-01T00:00Z.
+  s.packTag(1)
+  s.pack_type(epochSeconds)
+
 # Map (major type 5)
 proc pack_type*[K, V](s: Stream, val: Table[K, V]) =
   # Canonical only when using CborStream and canonicalMode is enabled
@@ -271,7 +295,7 @@ proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
 # ---- Decoding for new types ----
 
 proc unpack_type*(s: Stream, val: var seq[byte]) =
-  let (major, ai) = s.readInitial()
+  let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Binary:
     raise newException(CborInvalidHeaderError, "expected binary string")
   let data = s.readChunk(CborMajor.Binary, ai)
@@ -282,13 +306,13 @@ proc unpack_type*(s: Stream, val: var seq[byte]) =
     inc i
 
 proc unpack_type*(s: Stream, val: var string) =
-  let (major, ai) = s.readInitial()
+  let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.String:
     raise newException(CborInvalidHeaderError, "expected text string")
   val = s.readChunk(CborMajor.String, ai)
 
 proc unpack_type*[T](s: Stream, val: var seq[T]) =
-  let (major, ai) = s.readInitial()
+  let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Array:
     raise newException(CborInvalidHeaderError, "expected array")
   if ai == aiIndef:
@@ -314,7 +338,7 @@ proc unpack_type*[T](s: Stream, val: var seq[T]) =
 type SomeMap[K, V] = Table[K, V] | OrderedTable[K, V]
 
 proc unpack_type_impl*[K, V](s: Stream, val: var SomeMap[K, V]) =
-  let (major, ai) = s.readInitial()
+  let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Map:
     raise newException(CborInvalidHeaderError, "expected map")
   val.clear()
