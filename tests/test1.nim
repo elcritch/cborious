@@ -10,6 +10,5 @@ import unittest
 import cborious
 
 test "encode/decode simple":
-  var buf: seq[byte]
-  encode(buf, 42)
-  check decode(int, buf) == 42
+  let bytes = pack(42)
+  check unpack(bytes, int) == 42
