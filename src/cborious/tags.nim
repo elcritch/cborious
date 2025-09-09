@@ -42,23 +42,24 @@ proc unpackExpectTag*[T](s: Stream, value: var T) =
   s.unpack_type(value)
 
 const datetimeFmt = "yyyy-MM-dd'T'HH:mm:sszzz"
+var assumeZone: Timezone = utc()
 
-proc pack_tagged*(s: Stream, dt: DateTime)
+proc pack_tagged*(s: Stream, dt: DateTime) =
   ## Encode DateTime as tag(0) + RFC 3339 style string using provided format.
   ## Default includes timezone offset; ensure dt has correct zone.
   let txt = dt.format(datetimeFmt)
-  s.pack(txt)
+  s.pack_type(txt)
 
 proc pack_tagged*(s: Stream, t: Time) =
   ## Encode Time as tag(1) + integer seconds since Unix epoch.
   let secs = t.toUnix
-  s.pack(int64(secs))
+  s.pack_type(int64(secs))
 
-proc unpackTimestampString*(s: Stream, fmt = "yyyy-MM-dd'T'HH:mm:sszzz", assumeZone: Timezone = utc()): DateTime =
+proc unpack_tagged*(s: Stream, dt: var DateTime) =
   ## Decode tag(0) timestamp string into DateTime using provided format.
   ## If the format does not include an offset (no 'z'), the parsed DateTime is assigned assumeZone.
   var str: string
-  s.unpackExpectTag(CborTagDateTimeString, str)
+  s.unpackExpectTag(str)
   var dt: DateTime
   if 'z' in fmt:
     dt = parse(str, fmt)
@@ -69,10 +70,10 @@ proc unpackTimestampString*(s: Stream, fmt = "yyyy-MM-dd'T'HH:mm:sszzz", assumeZ
   else:
     let tmp = parse(str, fmt)
     dt = initDateTime(tmp.monthday, tmp.month, tmp.year, tmp.hour, tmp.minute, tmp.second, zone = assumeZone)
-  result = dt
+  dt = dt
 
-proc unpackTimestamp*(s: Stream): Time =
+proc unpack_tagged*(s: Stream, t: var Time) =
   ## Decode tag(1) integer seconds into Time.
   var secs: int64
-  s.unpackExpectTag(CborTagEpochSeconds, secs)
-  result = fromUnix(secs)
+  s.unpackExpectTag(secs)
+  t = fromUnix(secs)
