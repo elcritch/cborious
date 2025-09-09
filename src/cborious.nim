@@ -19,8 +19,7 @@ proc unpack*[T](data: string, val: var T) =
   s.setPosition(0)
   s.unpack(val)
 
-proc unpack*[Stream, T](s: Stream, val: typedesc[T]): T {.inline.} =
-  unpack(s, result)
+proc unpack*[StreamT, T](s: StreamT, val: var T) = s.unpack_type(val)
 
-proc unpack*[T](data: string, val: typedesc[T]): T {.inline.} =
-  unpack(data, result)
+proc unpack*[StreamT, T](s: StreamT, val: typedesc[T]): T {.inline.} =
+  unpack(s, result)

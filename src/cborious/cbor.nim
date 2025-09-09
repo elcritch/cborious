@@ -182,9 +182,3 @@ proc unpack_type*(s: Stream, val: var uint) =
     var x32: uint32
     s.unpack_type(x32)
     val = uint(x32)
-
-# Generic unpack wrappers matching msgpack4nim API
-proc unpack*[StreamT, T](s: StreamT, val: var T) = s.unpack_type(val)
-
-proc unpack*[StreamT, T](s: StreamT, val: typedesc[T]): T {.inline.} =
-  unpack(s, result)
