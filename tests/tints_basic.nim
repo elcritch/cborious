@@ -9,7 +9,13 @@ suite "CBOR basic ints":
       buf.setPosition(0)
       pack(buf, int64(v))
       echo "packed ", v, " to: ", buf.data.repr()
-      buf.setPosition(0)
+      let d = unpack(buf, int64)
+      check d == int64(v)
+
+  test "roundtrip selected unsigned ints (string)":
+    for v in [0, 1, 23, 24, 255, 256, 65535, 65536, 4294967295'i64]:
+      var buf = pack(int64(v))
+      echo "packed ", v, " to: ", buf.repr()
       let d = unpack(buf, int64)
       check d == int64(v)
 
@@ -18,7 +24,6 @@ suite "CBOR basic ints":
     for v in [-1'i64, -10, -24, -25, -255, -256, -65535, -65536, -4294967296'i64]:
       buf.setPosition(0)
       pack(buf, v)
-      buf.setPosition(0)
       let d = unpack(buf, int64)
       check d == v
 
@@ -35,3 +40,4 @@ suite "CBOR basic ints":
     # check pack(-65537)         == @[0x3a'u8, 0x00'u8, 0x01'u8, 0x00'u8, 0x00'u8]
     # check pack(-4294967296'i64)== @[0x3a'u8, 0xff'u8, 0xff'u8, 0xff'u8, 0xff'u8]
     # check pack(-4294967297'i64)== @[0x3b'u8, 0x00'u8, 0x00'u8, 0x00'u8, 0x01'u8, 0x00'u8, 0x00'u8, 0x00'u8, 0x00'u8]
+

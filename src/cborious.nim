@@ -9,12 +9,12 @@ import cborious/[types, stream, cbor]
 export stream, types, cbor
 
 
-proc pack*[T](val: T): string =
+proc packToString*[T](val: T): string =
   var s = CborStream.init(sizeof(T))
-  s.pack(val)
+  s.pack_type(val)
   result = s.data
 
-proc unpack*[T](data: string, val: var T) =
+proc unpackFromString*[T](data: string, val: var T) =
   var s = CborStream.init(data)
   s.setPosition(0)
   s.unpack_type(val)
@@ -23,9 +23,3 @@ proc unpack*[StreamT, T](s: StreamT, val: var T) = s.unpack_type(val)
 
 proc unpack*[StreamT, T](s: StreamT, val: typedesc[T]): T {.inline.} =
   unpack(s, result)
-
-# Convenience overload to unpack directly from a string into a typedesc
-proc unpack*[T](data: string, val: typedesc[T]): T {.inline.} =
-  var tmp: T
-  unpack(data, tmp)
-  result = tmp
