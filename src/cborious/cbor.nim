@@ -61,8 +61,6 @@ proc pack_type*(s: Stream, val: int16) = pack_type(s, int64(val))
 proc pack_type*(s: Stream, val: int8)  = pack_type(s, int64(val))
 proc pack_type*(s: Stream, val: int)   = pack_type(s, int64(val))
 
-# # Generic pack wrapper matching msgpack4nim patterns
-# proc pack*[StreamT, T](s: StreamT, val: T) = s.pack_type(val)
 
 # ---- Decoding ----
 

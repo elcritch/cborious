@@ -23,3 +23,6 @@ proc unpack*[StreamT, T](s: StreamT, val: var T) = s.unpack_type(val)
 
 proc unpack*[StreamT, T](s: StreamT, val: typedesc[T]): T {.inline.} =
   unpack(s, result)
+
+# # Generic pack wrapper matching msgpack4nim patterns
+proc pack*[StreamT, T](s: StreamT, val: T) = s.pack_type(val)
