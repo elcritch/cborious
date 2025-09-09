@@ -8,31 +8,19 @@ import cborious/[types, stream, cbor]
 
 export stream, types, cbor
 
-# msgpack4nim-style pack function that returns seq[byte]
-proc pack*[T](val: T): seq[byte] =
-  let s = CborStream.init()
+
+proc pack*[T](val: T): string =
+  var s = CborStream.init(sizeof(T))
   s.pack(val)
-  s.toBytes()
+  result = s.data
 
-# msgpack4nim-style unpack functions
-proc unpack*[T](data: openArray[byte], val: var T) =
-  var sdata = newString(data.len)
-  for i, b in data: sdata[i] = char(b)
-  let s = CborStream.init(sdata)
+proc unpack*[T](data: string, val: var T) =
+  var s = CborStream.init(data)
+  s.setPosition(0)
   s.unpack(val)
-  if not s.atEnd:
-    raise newException(CborInvalidArgError, "extra bytes after value")
 
-proc unpack*[T](data: openArray[byte], val: typedesc[T]): T =
+proc unpack*[Stream, T](s: Stream, val: typedesc[T]): T {.inline.} =
+  unpack(s, result)
+
+proc unpack*[T](data: string, val: typedesc[T]): T {.inline.} =
   unpack(data, result)
-
-# Compatibility functions for the old API style
-proc encode*[T](dst: var seq[byte], val: T) =
-  let encoded = pack(val)
-  dst.add(encoded)
-
-proc decode*[T](typ: typedesc[T], data: openArray[byte]): T =
-  unpack(data, typ)
-
-# Direct encoding functions for compatibility
-proc encode*[T](val: T): seq[byte] = pack(val)
