@@ -6,14 +6,14 @@ import ./stream
 
 type
   CborMajor* = enum
-    mtUnsigned = 0
-    mtNegative = 1
-    mtBstr     = 2
-    mtTstr     = 3
-    mtArray    = 4
-    mtMap      = 5
-    mtTag      = 6
-    mtSimple   = 7
+    Unsigned = 0
+    Negative = 1
+    Binary   = 2
+    String   = 3
+    Array    = 4
+    Map      = 5
+    Tag      = 6
+    Simple   = 7
 
   CborException* = object of CatchableError
   CborEndOfBufferError* = object of CborException

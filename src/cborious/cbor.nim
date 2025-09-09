@@ -9,18 +9,18 @@ template writeInitial*(s: Stream, major: CborMajor, ai: uint8) =
 # Encode unsigned integer (major type 0)
 proc cborPackUInt*(s: Stream, v: uint64) =
   if v <= 23'u64:
-    s.writeInitial(CborMajor.mtUnsigned, uint8(v))
+    s.writeInitial(CborMajor.Unsigned, uint8(v))
   elif v <= 0xff'u64:
-    s.writeInitial(CborMajor.mtUnsigned, 24'u8)
+    s.writeInitial(CborMajor.Unsigned, 24'u8)
     s.write(char(uint8(v)))
   elif v <= 0xffff'u64:
-    s.writeInitial(CborMajor.mtUnsigned, 25'u8)
+    s.writeInitial(CborMajor.Unsigned, 25'u8)
     s.store16(uint16(v))
   elif v <= 0xffff_ffff'u64:
-    s.writeInitial(CborMajor.mtUnsigned, 26'u8)
+    s.writeInitial(CborMajor.Unsigned, 26'u8)
     s.store32(uint32(v))
   else:
-    s.writeInitial(CborMajor.mtUnsigned, 27'u8)
+    s.writeInitial(CborMajor.Unsigned, 27'u8)
     s.store64(v)
 
 # Encode negative integer (major type 1): value is -(n+1)
@@ -28,18 +28,18 @@ proc cborPackNInt*(s: Stream, v: int64) =
   ## v must be negative
   let n = uint64(-1'i64 - v) # converts as per CBOR: encode n where v = -(n+1)
   if n <= 23'u64:
-    s.writeInitial(CborMajor.mtNegative, uint8(n))
+    s.writeInitial(CborMajor.Negative, uint8(n))
   elif n <= 0xff'u64:
-    s.writeInitial(CborMajor.mtNegative, 24'u8)
+    s.writeInitial(CborMajor.Negative, 24'u8)
     s.write(char(uint8(n)))
   elif n <= 0xffff'u64:
-    s.writeInitial(CborMajor.mtNegative, 25'u8)
+    s.writeInitial(CborMajor.Negative, 25'u8)
     s.store16(uint16(n))
   elif n <= 0xffff_ffff'u64:
-    s.writeInitial(CborMajor.mtNegative, 26'u8)
+    s.writeInitial(CborMajor.Negative, 26'u8)
     s.store32(uint32(n))
   else:
-    s.writeInitial(CborMajor.mtNegative, 27'u8)
+    s.writeInitial(CborMajor.Negative, 27'u8)
     s.store64(n)
 
 # Public pack_type overloads
@@ -94,19 +94,19 @@ proc unpack_type*(s: Stream, val: var bool) =
 
 proc unpack_type*(s: Stream, val: var uint64) =
   let (major, ai) = s.readInitial()
-  if major != CborMajor.mtUnsigned:
+  if major != CborMajor.Unsigned:
     raise newException(CborInvalidHeaderError, "expected unsigned integer")
   val = s.readAddInfo(ai)
 
 proc unpack_type*(s: Stream, val: var int64) =
   let (major, ai) = s.readInitial()
   case major
-  of CborMajor.mtUnsigned:
+  of CborMajor.Unsigned:
     let u = s.readAddInfo(ai)
     if u > uint64(high(int64)):
       raise newException(CborOverflowError, "uint does not fit int64")
     val = int64(u)
-  of CborMajor.mtNegative:
+  of CborMajor.Negative:
     let n = s.readAddInfo(ai)
     if n == uint64(high(uint64)):
       # can't represent - (n+1) when n == max uint64
