@@ -50,6 +50,7 @@ suite "CBOR basics":
     check packToString(-25)  == "\x38\x18"
     check packToString(true) == "\xf5"
     check packToString(false)== "\xf4"
+
   test "roundtrip selected unsigned ints":
     var buf = CborStream.init()
     for v in [0, 1, 23, 24, 255, 256, 65535, 65536, 4294967295'i64]:
