@@ -4,9 +4,9 @@ import std/strutils
 import cborious
 import cborious/tags
 
-template checkPackToString[T](v: T, expected: string) =
-  echo "checking " & $v & " (" & $typeof(v) & ")" & " to " & expected.repr()
-  check packToString(v).repr() == expected.repr()
+template checkPackToString(v: CborStream, expected: string) =
+  echo "checking " & $v.data.repr() & " (" & $typeof(v.data) & ")" & " to " & expected.repr()
+  check v.data.repr() == expected.repr()
 
 suite "CBOR tags & timestamps":
   test "tag 0: RFC3339 string roundtrip & generic skip":
@@ -14,7 +14,8 @@ suite "CBOR tags & timestamps":
     var s = CborStream.init()
     s.pack_tagged(dt)
     # C0 (tag 0), then length-prefixed string
-    checkPackToString(s.data, "\xC0\x742013-03-21T20:04:00Z")
+    checkPackToString(s, "\xC0\x742013-03-21T20:04:00Z")
+    # checkPackToString(s.data, "\xC0\x742013-03-21T20:04:00Z")
     # Unpack as string should ignore tag
     s.setPosition(0)
     let txt = unpack(s, string)
@@ -25,7 +26,7 @@ suite "CBOR tags & timestamps":
     var s = CborStream.init()
     s.pack_tagged(t)
     # C1 = tag 1, then 1A = uint32, followed by 0x514B67B0
-    check s.data == "\xc1\x1a\x51\x4b\x67\xb0"
+    check s.data == "\xC1\x1A\x51\x4B\x67\xB0"
     s.setPosition(0)
     # Unpack as integer should ignore tag
     let secs = unpack(s, int64)
