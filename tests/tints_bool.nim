@@ -25,10 +25,12 @@ suite "CBOR ints and bools":
 
     buf.setPosition(0)
     pack(buf, true)
+    buf.setPosition(0)
     check unpack(buf, bool) == true
 
     buf.setPosition(0)
     pack(buf, false)
+    buf.setPosition(0)
     check unpack(buf, bool) == false
 
   test "canonical encodings bytes":
