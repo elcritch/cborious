@@ -14,15 +14,20 @@ proc packToString*[T](val: T): string =
   s.pack_type(val)
   result = move s.data
 
-proc unpackFromString*[T](data: string, val: var T) =
-  var s = CborStream.init(data)
-  s.setPosition(0)
-  s.unpack_type(val)
+proc unpack*[T](s: Stream, val: var T) = s.unpack_type(val)
 
-proc unpack*[StreamT, T](s: StreamT, val: var T) = s.unpack_type(val)
-
-proc unpack*[StreamT, T](s: StreamT, val: typedesc[T]): T {.inline.} =
+proc unpack*[T](s: Stream, val: typedesc[T]): T {.inline.} =
   unpack(s, result)
 
 # # Generic pack wrapper matching msgpack4nim patterns
-proc pack*[StreamT, T](s: StreamT, val: T) = s.pack_type(val)
+proc pack*[T](s: Stream, val: T) = s.pack_type(val)
+
+proc unpackFromString*[T](data: sink string, val: var T) =
+  var s = CborStream.init(data)
+  s.setPosition(0)
+  s.unpack(val)
+
+proc unpackFromString*[T](data: sink string, val: typedesc[T]): T =
+  var s = CborStream.init(data)
+  s.setPosition(0)
+  s.unpack(result)

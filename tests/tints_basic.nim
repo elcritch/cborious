@@ -17,8 +17,8 @@ suite "CBOR basic ints":
     for v in [0, 1, 23, 24, 255, 256, 65535, 65536, 4294967295'i64]:
       var buf = packToString(int64(v))
       echo "packed ", v, " to: ", buf.repr()
-      # let d = unpackFromString(buf, int64)
-      # check d == int64(v)
+      let d = unpackFromString(buf, int64)
+      check d == int64(v)
 
   test "roundtrip selected negative ints":
     var buf = CborStream.init()
