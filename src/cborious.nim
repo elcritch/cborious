@@ -3,10 +3,10 @@
 # but you can remove it if you wish.
 
 ## Public re-exports and msgpack4nim-style API for CBOR encode/decode
-import cborious/types
 import std/streams
-import cborious/stream
-export stream, types
+import cborious/[types, stream, cbor]
+
+export stream, types, cbor
 
 # msgpack4nim-style pack function that returns seq[byte]
 proc pack*[T](val: T): seq[byte] =
@@ -36,9 +36,3 @@ proc decode*[T](typ: typedesc[T], data: openArray[byte]): T =
 
 # Direct encoding functions for compatibility
 proc encode*[T](val: T): seq[byte] = pack(val)
-
-# Stream-based API exports
-export types.pack, types.unpack, types.packType, types.unpackType
-
-# Re-export the stream type for direct use
-export stream.CborStream

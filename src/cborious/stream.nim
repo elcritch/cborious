@@ -2,6 +2,8 @@ import std/streams
 import std/endians
 import types
 
+export streams
+
 type
   CborStream* = ref object of StringStreamObj
 
