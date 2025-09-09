@@ -61,17 +61,7 @@ proc unpack_tagged*(s: Stream, dt: var DateTime) =
   var str: string
   s.unpackExpectTag(CborTagDateTimeString, str)
 
-  var dt: DateTime
-  if 'z' in datetimeFmt:
-    dt = parse(str, datetimeFmt)
-  elif "'Z'" in datetimeFmt:
-    let fmt2 = datetimeFmt.replace("'Z'", "zzz")
-    let str2 = str.replace("Z", "+00:00")
-    dt = parse(str2, fmt2)
-  else:
-    let tmp = parse(str, datetimeFmt)
-    dt = initDateTime(tmp.monthday, tmp.month, tmp.year, tmp.hour, tmp.minute, tmp.second, zone = assumeZone)
-  dt = dt
+  dt = parse(str, datetimeFmt)
 
 proc unpack_tagged*(s: Stream, t: var Time) =
   ## Decode tag(1) integer seconds into Time.
