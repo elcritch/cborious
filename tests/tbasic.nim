@@ -217,13 +217,32 @@ suite "CBOR basics":
       var d = unpack(s, Table[string, int])
       check d == t2
 
+  test "maps (ordered) (canonical + roundtrip)":
     # OrderedTable roundtrip
     block:
       var ot: OrderedTable[string, string]
-      ot["x"] = "hello"
       ot["y"] = "world"
+      ot["x"] = "hello"
       var s = CborStream.init()
       pack(s, ot)
+      echo "packed ", ot, " to: ", s.data.repr()
       s.setPosition(0)
       var d = unpack(s, OrderedTable[string, string])
       check d == ot
+
+  test "map canonical ordering (deterministic)":
+    # String keys of different lengths: 'b' sorts before 'aa'
+    block:
+      var t = initTable[string, int]()
+      t["aa"] = 1
+      t["b"] = 2
+      # Expect: A2, 61 'b', 02, 62 'a' 'a', 01
+      check packToString(t) == "\xa2\x61b\x02\x62aa\x01"
+
+    # Integer keys sort by their canonical bytes: 1 before 10
+    block:
+      var t2 = initTable[int, string]()
+      t2[10] = "x"
+      t2[1] = "y"
+      # Expect: A2, 01, 61 'y', 0A, 61 'x'
+      check packToString(t2) == "\xa2\x01\x61y\x0a\x61x"

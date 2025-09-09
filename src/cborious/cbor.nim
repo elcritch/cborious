@@ -1,6 +1,7 @@
 import ./types
 import ./stream
 import std/tables
+import std/algorithm
 
 # ---- CBOR core encode/decode (ints, bools) ----
 
@@ -202,10 +203,18 @@ proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.
 
 # Map (major type 5)
 proc pack_type*[K, V](s: Stream, val: Table[K, V]) =
-  s.packLen(val.len, CborMajor.Map)
+  # Deterministic ordering per RFC 8949: sort by canonical CBOR bytes of keys
+  var items: seq[tuple[keyEnc: string, k: K, v: V]]
+  items.setLen(0)
   for k, v in val.pairs:
-    s.pack_type(k)
-    s.pack_type(v)
+    var ks = CborStream.init()
+    ks.pack_type(k)
+    items.add((move ks.data, k, v))
+  items.sort(proc(a, b: typeof(items[0])): int = cmp(a.keyEnc, b.keyEnc))
+  s.packLen(items.len, CborMajor.Map)
+  for it in items:
+    for ch in it.keyEnc: s.write(ch)
+    s.pack_type(it.v)
 
 proc pack_type*[K, V](s: Stream, val: OrderedTable[K, V]) =
   s.packLen(val.len, CborMajor.Map)
@@ -283,7 +292,9 @@ proc unpack_type*[T](s: Stream, val: var seq[T]) =
       s.unpack_type(val[i])
       inc i
 
-proc unpack_type*[K, V](s: Stream, val: var Table[K, V]) =
+type SomeMap[K, V] = Table[K, V] | OrderedTable[K, V]
+
+proc unpack_type_impl*[K, V](s: Stream, val: var SomeMap[K, V]) =
   let (major, ai) = s.readInitial()
   if major != CborMajor.Map:
     raise newException(CborInvalidHeaderError, "expected map")
@@ -311,9 +322,8 @@ proc unpack_type*[K, V](s: Stream, val: var Table[K, V]) =
       val[k] = v
       inc i
 
+proc unpack_type*[K, V](s: Stream, val: var Table[K, V]) =
+  s.unpack_type_impl(val)
+
 proc unpack_type*[K, V](s: Stream, val: var OrderedTable[K, V]) =
-  var tmp: Table[K, V]
-  s.unpack_type(tmp)
-  val.clear()
-  for k, v in tmp:
-    val[k] = v
+  s.unpack_type_impl(val)
