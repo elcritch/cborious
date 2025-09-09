@@ -21,5 +21,30 @@ type
   CborInvalidArgError* = object of CborException
   CborOverflowError* = object of CborException
 
+
 const
   aiIndef* = 31'u8
+
+proc majorToPrefix*(major: CborMajor): int =
+  ## mostly for helping humans to grok the shifted prefixes
+  case major
+  of Unsigned :0x00 # 0 \0
+  of Negative : 0x20 # 1 \32
+  of Binary   : 0x40 # 2 \64
+  of String   : 0x60 # 3 \96
+  of Array    : 0x80 # 4 \128
+  of Map      : 0xA0 # 5 \160
+  of Tag      : 0xC0 # 6 \192
+  of Simple   : 0xE0 # 7 \224
+
+proc majorToChar*(major: CborMajor): char =
+  ## mostly for helping humans to grok the shifted prefixes
+  case major
+  of Unsigned : '\0' # 0
+  of Negative : '\32' # 1
+  of Binary   : '\64' # 2
+  of String   : '\96' # 3
+  of Array    : '\128' # 4
+  of Map      : '\160' # 5
+  of Tag      : '\192' # 6
+  of Simple   : '\224' # 7

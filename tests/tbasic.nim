@@ -106,3 +106,89 @@ suite "CBOR basics":
     check packToString(65536)          == "\26\0\1\0\0"
     check packToString(4294967295'i64) == "\26\255\255\255\255"
     check packToString(4294967296'i64) == "\27\000\000\000\001\000\000\000\000"
+
+  test "text strings (canonical + roundtrip)":
+    # Canonical encodings
+    check packToString("") == "\x60"
+    check packToString("a") == "\x61a"
+    check packToString("hello") == "\x65hello"
+    var s24 = newString(24)
+    for i in 0..<s24.len: s24[i] = 'a'
+    check packToString(s24) == "\x78\x18" & s24
+    var s255 = newString(255)
+    for i in 0..<s255.len: s255[i] = 'a'
+    check packToString(s255) == "\x78\xff" & s255
+    var s256 = newString(256)
+    for i in 0..<s256.len: s256[i] = 'a'
+    check packToString(s256) == "\x79\x01\x00" & s256
+
+    # Roundtrip
+    var buf = CborStream.init()
+    for s in ["", "a", "hello", s24, s255, s256]:
+      buf.setPosition(0)
+      pack(buf, s)
+      buf.setPosition(0)
+      let d = unpack(buf, string)
+      check d == s
+
+  test "binary (byte string) canonical + roundtrip":
+    var bytes0 = newSeq[uint8](0)
+    var bytes2 = @[0x00'u8, 0xff'u8]
+    var bytes24 = newSeq[uint8](24)
+    for i in 0..<bytes24.len: bytes24[i] = uint8(i)
+    var bytes255 = newSeq[uint8](255)
+    for i in 0..<bytes255.len: bytes255[i] = 0xAA'u8
+    var bytes256 = newSeq[uint8](256)
+    for i in 0..<bytes256.len: bytes256[i] = 0x55'u8
+
+    check packToString(bytes0) == "\x40"
+    check packToString(bytes2) == "\x42\x00\xff"
+    block:
+      var expect = "\x58\x18"
+      var body = newString(bytes24.len)
+      for i, v in bytes24: body[i] = char(v)
+      check packToString(bytes24) == expect & body
+    block:
+      var expect = "\x58\xff"
+      var body = newString(bytes255.len)
+      for i, v in bytes255: body[i] = char(v)
+      check packToString(bytes255) == expect & body
+    block:
+      var expect = "\x59\x01\x00"
+      var body = newString(bytes256.len)
+      for i, v in bytes256: body[i] = char(v)
+      check packToString(bytes256) == expect & body
+
+    # Roundtrip
+    var buf = CborStream.init()
+    for b in [bytes0, bytes2, bytes24, bytes255, bytes256]:
+      buf.setPosition(0)
+      pack(buf, b)
+      buf.setPosition(0)
+      let d = unpack(buf, seq[uint8])
+      check d == b
+
+  test "arrays (canonical + roundtrip)":
+    # Empty
+    check packToString(newSeq[int](0)) == "\x80"
+
+    # Small array of small ints
+    let arr = @[1, 2, 3]
+    check packToString(arr) == "\x83\x01\x02\x03"
+
+    # Roundtrip various arrays
+    var buf = CborStream.init()
+    for a in [newSeq[int](0), @[0, 23, 24, 255], @[ -1, 0, 1 ]]:
+      buf.setPosition(0)
+      pack(buf, a)
+      buf.setPosition(0)
+      let d = unpack(buf, seq[int])
+      check d == a
+
+    # Array of strings
+    let sa = @["a", "", "hello"]
+    buf.setPosition(0)
+    pack(buf, sa)
+    buf.setPosition(0)
+    let sd = unpack(buf, seq[string])
+    check sd == sa

@@ -165,3 +165,106 @@ proc unpack_type*(s: Stream, val: var uint) =
     var x32: uint32
     s.unpack_type(x32)
     val = uint(x32)
+
+
+# ---- Binary (byte string), Text (UTF-8 string), and Arrays ----
+
+proc packLen(s: Stream, len: int, maj: CborMajor) {.inline.} =
+  if len < 0: raise newException(CborInvalidArgError, "negative length")
+  cborPackInt(s, uint64(len), maj)
+
+# Binary (major type 2): seq/array of uint8
+proc pack_type*(s: Stream, val: openArray[uint8]) =
+  s.packLen(val.len, CborMajor.Binary)
+  if val.len > 0:
+    var i = 0
+    while i < val.len:
+      s.write(char(val[i]))
+      inc i
+
+proc pack_type*(s: Stream, val: seq[uint8]) = s.pack_type(val.toOpenArray(0, val.high))
+
+# Text string (major type 3)
+proc pack_type*(s: Stream, val: string) =
+  s.packLen(val.len, CborMajor.String)
+  if val.len > 0:
+    for ch in val:
+      s.write(ch)
+
+# Array (major type 4)
+proc pack_type*[T](s: Stream, val: openArray[T]) =
+  s.packLen(val.len, CborMajor.Array)
+  for it in val:
+    s.pack_type(it)
+
+proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.high))
+
+
+# ---- Decoding helpers ----
+
+proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
+  ## Reads binary/text data handling definite and indefinite lengths.
+  if ai == aiIndef:
+    # Indefinite-length: concatenate definite-length chunks until break 0xff
+    var acc = ""
+    while true:
+      let pos = s.getPosition()
+      let b = s.readChar()
+      if uint8(ord(b)) == 0xff'u8: # break
+        break
+      s.setPosition(pos)
+      let (m2, ai2) = s.readInitial()
+      if m2 != majExpected or ai2 == aiIndef:
+        raise newException(CborInvalidHeaderError, "invalid chunk in indefinite string")
+      let n = int(s.readAddInfo(ai2))
+      if n < 0: raise newException(CborInvalidHeaderError, "negative length")
+      let part = s.readExactStr(n)
+      acc.add(part)
+    return acc
+  else:
+    let n = int(s.readAddInfo(ai))
+    if n < 0: raise newException(CborInvalidHeaderError, "negative length")
+    return s.readExactStr(n)
+
+# ---- Decoding for new types ----
+
+proc unpack_type*(s: Stream, val: var seq[uint8]) =
+  let (major, ai) = s.readInitial()
+  if major != CborMajor.Binary:
+    raise newException(CborInvalidHeaderError, "expected binary string")
+  let data = s.readChunk(CborMajor.Binary, ai)
+  val.setLen(data.len)
+  var i = 0
+  for ch in data:
+    val[i] = uint8(ord(ch))
+    inc i
+
+proc unpack_type*(s: Stream, val: var string) =
+  let (major, ai) = s.readInitial()
+  if major != CborMajor.String:
+    raise newException(CborInvalidHeaderError, "expected text string")
+  val = s.readChunk(CborMajor.String, ai)
+
+proc unpack_type*[T](s: Stream, val: var seq[T]) =
+  let (major, ai) = s.readInitial()
+  if major != CborMajor.Array:
+    raise newException(CborInvalidHeaderError, "expected array")
+  if ai == aiIndef:
+    # Grow until break
+    val.setLen(0)
+    while true:
+      let pos = s.getPosition()
+      let b = s.readChar()
+      if uint8(ord(b)) == 0xff'u8: break
+      s.setPosition(pos)
+      var item: T
+      s.unpack_type(item)
+      val.add(item)
+  else:
+    let n = int(s.readAddInfo(ai))
+    if n < 0: raise newException(CborInvalidHeaderError, "negative length")
+    val.setLen(n)
+    var i = 0
+    while i < n:
+      s.unpack_type(val[i])
+      inc i
