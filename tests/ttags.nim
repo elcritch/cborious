@@ -2,7 +2,7 @@ import unittest
 import std/times
 import std/strutils
 import cborious
-import cborious/times as cbortimes
+import cborious/tags
 
 suite "CBOR tags & timestamps":
   test "tag 0: RFC3339 string roundtrip & generic skip":

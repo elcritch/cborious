@@ -215,33 +215,6 @@ proc packTag*(s: Stream, tag: CborTag) =
   ## Writes a CBOR tag header with the given tag value.
   cborPackInt(s, tag.uint64, CborMajor.Tag)
 
-# proc cborTag*[T](s: Stream, tp: typedesc[T]): CborTag =
-#   result = CborTag(tp.name.hash)
-
-proc packTagged*[T](s: Stream, val: T) =
-  ## Pack a value with a preceding tag.
-  s.packTag(cborTag(T))
-  s.pack_type(val)
-
-proc readOneTag*(s: Stream, tagOut: var CborTag): bool =
-  ## Reads a single tag if present, returns true and sets tagOut. Restores position when not a tag.
-  let pos = s.getPosition()
-  let (m, ai) = s.readInitial()
-  if m == CborMajor.Tag:
-    tagOut = s.readAddInfo(ai).CborTag
-    return true
-  s.setPosition(pos)
-  return false
-
-proc unpackExpectTag*[T](s: Stream, value: var T) =
-  ## Requires the next item to be a tag with the specified id, then unpacks a value of type T.
-  let (m, ai) = s.readInitial()
-  if m != CborMajor.Tag:
-    raise newException(CborInvalidHeaderError, "expected tag")
-  let t = s.readAddInfo(ai)
-  if t != cborTag(T).uint64:
-    raise newException(CborInvalidHeaderError, "unexpected tag value")
-  s.unpack_type(value)
 
 # Map (major type 5)
 proc pack_type*[K, V](s: Stream, val: Table[K, V]) =

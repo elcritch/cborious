@@ -16,16 +16,45 @@ proc cborTag*(tp: typedesc[DateTime]): CborTag =
 proc cborTag*(tp: typedesc[Time]): CborTag =
   result = CborTagEpochSeconds
 
+# proc cborTag*[T](s: Stream, tp: typedesc[T]): CborTag =
+#   result = CborTag(tp.name.hash)
+
+proc packTagged*[T](s: Stream, val: T) =
+  ## Pack a value with a preceding tag.
+  s.packTag(cborTag(T))
+  s.pack_type(val)
+
+proc readOneTag*(s: Stream, tagOut: var CborTag): bool =
+  ## Reads a single tag if present, returns true and sets tagOut. Restores position when not a tag.
+  let pos = s.getPosition()
+  let (m, ai) = s.readInitial()
+  if m == CborMajor.Tag:
+    tagOut = s.readAddInfo(ai).CborTag
+    return true
+  s.setPosition(pos)
+  return false
+
+proc unpackExpectTag*[T](s: Stream, value: var T) =
+  ## Requires the next item to be a tag with the specified id, then unpacks a value of type T.
+  let (m, ai) = s.readInitial()
+  if m != CborMajor.Tag:
+    raise newException(CborInvalidHeaderError, "expected tag")
+  let t = s.readAddInfo(ai)
+  if t != cborTag(T).uint64:
+    raise newException(CborInvalidHeaderError, "unexpected tag value")
+  s.unpack_type(value)
+
+
 proc packTimestampString*(s: Stream, dt: DateTime, fmt = "yyyy-MM-dd'T'HH:mm:sszzz") =
   ## Encode DateTime as tag(0) + RFC 3339 style string using provided format.
   ## Default includes timezone offset; ensure dt has correct zone.
   let txt = dt.format(fmt)
-  s.packTagged(CborTagDateTimeString, txt)
+  s.packTagged(txt)
 
 proc packTimestamp*(s: Stream, t: Time) =
   ## Encode Time as tag(1) + integer seconds since Unix epoch.
   let secs = t.toUnix
-  s.packTagged(CborTagEpochSeconds, int64(secs))
+  s.packTagged(int64(secs))
 
 proc unpackTimestampString*(s: Stream, fmt = "yyyy-MM-dd'T'HH:mm:sszzz", assumeZone: Timezone = utc()): DateTime =
   ## Decode tag(0) timestamp string into DateTime using provided format.
