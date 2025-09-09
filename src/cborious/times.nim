@@ -1,13 +1,14 @@
 import std/times
 import std/strutils
+import ./types
 import ./stream
 import ./cbor
 
 # CBOR Timestamp helpers using Nim's std/times
 
 const
-  CborTagDateTimeString* = 0'u64
-  CborTagEpochSeconds*   = 1'u64
+  CborTagDateTimeString* = 0.CborTag
+  CborTagEpochSeconds*   = 1.CborTag
 
 proc packTimestampString*(s: Stream, dt: DateTime, fmt = "yyyy-MM-dd'T'HH:mm:sszzz") =
   ## Encode DateTime as tag(0) + RFC 3339 style string using provided format.

@@ -285,7 +285,7 @@ proc pack_type*[K, V](s: Stream, val: OrderedTable[K, V]) =
 
 proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
   ## Reads binary/text data handling definite and indefinite lengths.
-  if ai == aiIndef:
+  if ai == AiIndef:
     # Indefinite-length: concatenate definite-length chunks until break 0xff
     var acc = ""
     while true:
@@ -295,7 +295,7 @@ proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
         break
       s.setPosition(pos)
       let (m2, ai2) = s.readInitial()
-      if m2 != majExpected or ai2 == aiIndef:
+      if m2 != majExpected or ai2 == AiIndef:
         raise newException(CborInvalidHeaderError, "invalid chunk in indefinite string")
       let n = int(s.readAddInfo(ai2))
       if n < 0: raise newException(CborInvalidHeaderError, "negative length")
@@ -330,7 +330,7 @@ proc unpack_type*[T](s: Stream, val: var seq[T]) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Array:
     raise newException(CborInvalidHeaderError, "expected array")
-  if ai == aiIndef:
+  if ai == AiIndef:
     # Grow until break
     val.setLen(0)
     while true:
@@ -357,7 +357,7 @@ proc unpack_type_impl*[K, V](s: Stream, val: var SomeMap[K, V]) =
   if major != CborMajor.Map:
     raise newException(CborInvalidHeaderError, "expected map")
   val.clear()
-  if ai == aiIndef:
+  if ai == AiIndef:
     while true:
       let pos = s.getPosition()
       let b = s.readChar()

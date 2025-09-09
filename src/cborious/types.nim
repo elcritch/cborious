@@ -15,6 +15,8 @@ type
     Tag      = 6
     Simple   = 7
 
+  CborTag* = distinct uint64
+
   CborException* = object of CatchableError
   CborEndOfBufferError* = object of CborException
   CborInvalidHeaderError* = object of CborException
@@ -23,7 +25,13 @@ type
 
 
 const
-  aiIndef* = 31'u8
+  AiIndef* = 31'u8
+
+proc `==`(a: CborTag, b: CborTag): bool =
+  a.uint64 == b.uint64
+
+proc `$`(a: CborTag): string =
+  "Tag(" & $a.uint64 & ")"
 
 proc majorToPrefix*(major: CborMajor): int =
   ## mostly for helping humans to grok the shifted prefixes
