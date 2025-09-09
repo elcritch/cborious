@@ -5,7 +5,15 @@ import types
 export streams
 
 type
+  EncodingMode* = enum
+    CBOR_OBJ_TO_DEFAULT
+    CBOR_OBJ_TO_ARRAY
+    CBOR_OBJ_TO_MAP
+    CBOR_OBJ_TO_STREAM
+
   CborStream* = ref object of StringStreamObj
+    encodingMode: EncodingMode
+    canonicalMode: bool
 
 {.push gcsafe.}
 
@@ -88,3 +96,15 @@ proc readExactStr*(s: Stream, length: int, str: var string) =
   ## Reads a string from a stream, like `Stream.readStr`, but raises IOError if it's truncated.
   readStr(s, length, str)
   if str.len != length: raise newException(IOError, "string len mismatch")
+
+proc setEncodingMode*(s: CborStream, mode: EncodingMode) =
+  s.encodingMode = mode
+
+proc getEncodingMode*(s: CborStream): EncodingMode =
+  s.encodingMode
+
+proc setCanonicalMode*(s: CborStream, mode: bool) =
+  s.canonicalMode = mode
+
+proc getCanonicalMode*(s: CborStream): bool =
+  s.canonicalMode
