@@ -203,8 +203,8 @@ proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.
 
 # Map (major type 5)
 proc pack_type*[K, V](s: Stream, val: Table[K, V]) =
-  # Canonical only when using CborStream (msgpack4nim-style stream check)
-  if s of CborStream:
+  # Canonical only when using CborStream and canonicalMode is enabled
+  if s of CborStream and CborStream(s).getCanonicalMode():
     var items: seq[tuple[keyEnc: string, k: K, v: V]]
     items.setLen(0)
     for k, v in val.pairs:
@@ -223,7 +223,7 @@ proc pack_type*[K, V](s: Stream, val: Table[K, V]) =
       s.pack_type(v)
 
 proc pack_type*[K, V](s: Stream, val: OrderedTable[K, V]) =
-  if s of CborStream:
+  if s of CborStream and CborStream(s).getCanonicalMode():
     var items: seq[tuple[keyEnc: string, k: K, v: V]]
     items.setLen(0)
     for k, v in val.pairs:

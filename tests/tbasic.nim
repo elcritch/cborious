@@ -234,13 +234,14 @@ suite "CBOR basics":
       for k, v in d: tDec[k] = v
       check tDec == tOrig
 
-    # Non-canonical packing on base Stream preserves insertion order for OrderedTable
+    # Non-canonical packing via CborStream with canonical disabled preserves insertion order
     block:
       var ot2: OrderedTable[string, int]
       ot2["aa"] = 1
       ot2["b"] = 2
-      var s2 = newStringStream("")
-      pack(s2, ot2) # s2 is not CborStream, so non-canonical
+      var s2 = CborStream.init()
+      s2.setCanonicalMode(false)
+      pack(s2, ot2)
       let enc = s2.data
       # Expect order: 'aa' then 'b'
       check enc == "\xa2\x62aa\x01\x61b\x02"
