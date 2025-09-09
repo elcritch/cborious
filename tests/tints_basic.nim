@@ -43,3 +43,9 @@ suite "CBOR basic ints":
     check packToString(-4294967296'i64)== "\x3a\xff\xff\xff\xff"
     check packToString(-4294967297'i64)== "\x3b\x00\x00\x00\x01\x00\x00\x00\x00"
 
+    check packToString(-256)           == "\56\255"
+    check packToString(-257)           == "\57\001\000"
+    check packToString(-65536)         == "\57\255\255"
+    check packToString(-65537)         == "\58\000\001\000\000"
+    check packToString(-4294967296'i64)== "\58\255\255\255\255"
+    check packToString(-4294967297'i64)== "\59\000\000\000\001\000\000\000\000"
