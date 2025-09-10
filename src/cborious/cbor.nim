@@ -504,3 +504,76 @@ proc cborUnpack*[K, V](s: Stream, val: var Table[K, V]) =
 
 proc cborUnpack*[K, V](s: Stream, val: var OrderedTable[K, V]) =
   s.cborUnpackImpl(val)
+
+
+# ---- Skipping values (like msgpack4nim's skipCborMsg) ----
+
+proc skipIndefChunks(s: Stream, majExpected: CborMajor) =
+  ## Skip chunks of an indefinite-length byte/text string until break (0xff).
+  while true:
+    let pos = s.getPosition()
+    let b = s.readChar()
+    if uint8(ord(b)) == 0xff'u8:
+      break
+    s.setPosition(pos)
+    let (m2, ai2) = s.readInitial()
+    if m2 != majExpected or ai2 == AiIndef:
+      raise newException(CborInvalidHeaderError, "invalid chunk in indefinite item")
+    let n = int(s.readAddInfo(ai2))
+    discard s.readExactStr(n)
+
+proc skipCborMsg*(s: Stream) =
+  ## Skips over the next CBOR item, including nested arrays/maps and tags.
+  let (major, ai) = s.readInitial()
+  case major
+  of CborMajor.Unsigned, CborMajor.Negative:
+    discard s.readAddInfo(ai)
+  of CborMajor.Binary, CborMajor.String:
+    if ai == AiIndef:
+      s.skipIndefChunks(major)
+    else:
+      let n = int(s.readAddInfo(ai))
+      discard s.readExactStr(n)
+  of CborMajor.Array:
+    if ai == AiIndef:
+      while true:
+        let pos = s.getPosition()
+        let b = s.readChar()
+        if uint8(ord(b)) == 0xff'u8: break
+        s.setPosition(pos)
+        s.skipCborMsg()
+    else:
+      let n = int(s.readAddInfo(ai))
+      var i = 0
+      while i < n:
+        s.skipCborMsg()
+        inc i
+  of CborMajor.Map:
+    if ai == AiIndef:
+      while true:
+        let pos = s.getPosition()
+        let b = s.readChar()
+        if uint8(ord(b)) == 0xff'u8: break
+        s.setPosition(pos)
+        s.skipCborMsg() # key
+        s.skipCborMsg() # value
+    else:
+      let n = int(s.readAddInfo(ai))
+      var i = 0
+      while i < n:
+        s.skipCborMsg() # key
+        s.skipCborMsg() # value
+        inc i
+  of CborMajor.Tag:
+    discard s.readAddInfo(ai) # tag value
+    s.skipCborMsg()              # skip tagged item
+  of CborMajor.Simple:
+    case ai
+    of 24'u8: discard s.readChar()
+    of 25'u8: discard s.unstore16()
+    of 26'u8: discard s.unstore32()
+    of 27'u8: discard s.unstore64()
+    of AiIndef:
+      raise newException(CborInvalidHeaderError, "unexpected break code outside indefinite")
+    else:
+      discard

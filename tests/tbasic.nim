@@ -311,3 +311,71 @@ suite "CBOR basics":
     block:
       var n32 = float32(NaN)
       checkPackToString(n32, "\xf9\x7e\x00")
+
+  test "skipCborMsg simple values":
+    var s = CborStream.init()
+    pack(s, 42)
+    pack(s, "hello")
+    s.setPosition(0)
+    skipCborMsg(s)
+    let strVal = unpack(s, string)
+    check strVal == "hello"
+
+    s = CborStream.init()
+    pack(s, true)
+    pack(s, 99)
+    s.setPosition(0)
+    skipCborMsg(s)
+    let iVal = unpack(s, int)
+    check iVal == 99
+
+    s = CborStream.init()
+    pack(s, 1.5)
+    pack(s, 7)
+    s.setPosition(0)
+    skipCborMsg(s)
+    let ival2 = unpack(s, int)
+    check ival2 == 7
+
+  test "skipCborMsg arrays and maps":
+    var s = CborStream.init()
+    pack(s, @[1,2,3])
+    pack(s, 9)
+    s.setPosition(0)
+    skipCborMsg(s)
+    check unpack(s, int) == 9
+
+    block:
+      var t = initTable[string, int]()
+      t["a"] = 1
+      t["b"] = 2
+      var s2 = CborStream.init()
+      pack(s2, t)
+      pack(s2, -5)
+      s2.setPosition(0)
+      skipCborMsg(s2)
+      check unpack(s2, int) == -5
+
+  test "skipCborMsg tags":
+    var s = CborStream.init()
+    s.cborPackTag(CborTag 0'u64)
+    pack(s, "t")
+    pack(s, 5)
+    s.setPosition(0)
+    skipCborMsg(s)
+    check unpack(s, int) == 5
+
+  test "skipCborMsg indefinite strings and arrays":
+    # Indefinite-length text string: 0x7f, then 'a' and 'b' chunks, break, then integer 1
+    var dataTxt = "\x7f\x61a\x61b\xff\x01"
+    var s1 = CborStream.init(dataTxt)
+    s1.setPosition(0)
+    skipCborMsg(s1)
+    check unpack(s1, int) == 1
+
+    # Indefinite-length array: 0x9f, then 1,2, break, then integer 1
+    var dataArr = "\x9f\x01\x02\xff\x01"
+    var s2 = CborStream.init(dataArr)
+    s2.setPosition(0)
+    skipCborMsg(s2)
+    check unpack(s2, int) == 1
