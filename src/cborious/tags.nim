@@ -4,67 +4,21 @@ import ./types
 import ./stream
 import ./cbor
 
-# CBOR Timestamp helpers using Nim's std/times
+# CBOR Tag helpers with opt-in tagging via cborTag(T)
 
 const
   CborTagDateTimeString* = 0.CborTag
-  CborTagEpochSeconds*   = 1.CborTag
 
-# proc cborTag*(tp: typedesc[DateTime]): CborTag =
-#   result = CborTagDateTimeString
+proc cborTag*(tp: typedesc[DateTime]): CborTag =
+  result = CborTagDateTimeString
 
 # proc cborTag*(tp: typedesc[Time]): CborTag =
 #   result = CborTagEpochSeconds
 
-proc pack_tagged*[T](s: Stream, tag: CborTag, val: T) =
-  ## Pack a value with a preceding tag.
-  s.cborPackTag(tag)
+proc cborPack*(s: Stream, val: DateTime) =
+  ## If a cborTag(T) is declared, serialize as tag(cborTag(T)) + cborPack(T).
   s.cborPack(val)
 
-proc readOneTag*(s: Stream, tagOut: var CborTag): bool =
-  ## Reads a single tag if present, returns true and sets tagOut. Restores position when not a tag.
-  let pos = s.getPosition()
-  let (m, ai) = s.readInitial()
-  if m == CborMajor.Tag:
-    tagOut = s.readAddInfo(ai).CborTag
-    return true
-  s.setPosition(pos)
-  return false
-
-proc unpackExpectTag*[T](s: Stream, tag: CborTag, value: var T) =
-  ## Requires the next item to be a tag with the specified id, then unpacks a value of type T.
-  let (m, ai) = s.readInitial()
-  if m != CborMajor.Tag:
-    raise newException(CborInvalidHeaderError, "expected tag")
-  let t = s.readAddInfo(ai)
-  if t != tag.uint64:
-    raise newException(CborInvalidHeaderError, "unexpected tag value")
-  s.cborUnpack(value)
-
-const datetimeFmt = "yyyy-MM-dd'T'HH:mm:sszzz"
-var assumeZone: Timezone = utc()
-
-proc pack_tagged*(s: Stream, dt: DateTime) =
-  ## Encode DateTime as tag(0) + RFC 3339 style string using provided format.
-  ## Default includes timezone offset; ensure dt has correct zone.
-  let txt = dt.format(datetimeFmt)
-  s.pack_tagged(CborTagDateTimeString, txt)
-
-proc pack_tagged*(s: Stream, t: Time) =
-  ## Encode Time as tag(1) + integer seconds since Unix epoch.
-  let secs = t.toUnix
-  s.pack_tagged(CborTagEpochSeconds, int64(secs))
-
-proc unpack_tagged*(s: Stream, dt: var DateTime) =
-  ## Decode tag(0) timestamp string into DateTime using provided format.
-  ## If the format does not include an offset (no 'z'), the parsed DateTime is assigned assumeZone.
-  var str: string
-  s.unpackExpectTag(CborTagDateTimeString, str)
-
-  dt = parse(str, datetimeFmt)
-
-proc unpack_tagged*(s: Stream, t: var Time) =
-  ## Decode tag(1) integer seconds into Time.
-  var secs: int64
-  s.unpackExpectTag(CborTagEpochSeconds, secs)
-  t = fromUnix(secs)
+proc cborUnpack*(s: Stream, val: var DateTime) =
+  ## If a cborTag(T) is declared, require and consume the tag before unpacking T.
+  s.unpackExpectTag(cborTag(DateTime), val)

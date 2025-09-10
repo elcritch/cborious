@@ -79,6 +79,27 @@ template undistinctPack*(x: typed): untyped =
 template undistinctUnpack*(x: typed): untyped =
   undistinctImpl(x, type(x), bindSym("cborUnpack", brForceOpen))
 
+# ---- Tag helpers ----
+
+proc readOneTag*(s: Stream, tagOut: var CborTag): bool =
+  ## Reads a single tag if present, returns true and sets tagOut. Restores position when not a tag.
+  let pos = s.getPosition()
+  let (m, ai) = s.readInitial()
+  if m == CborMajor.Tag:
+    tagOut = s.readAddInfo(ai).CborTag
+    return true
+  s.setPosition(pos)
+  return false
+
+proc unpackExpectTag*[T](s: Stream, tag: CborTag, value: var T) =
+  ## Requires the next item to be a tag with the specified id, then unpacks a value of type T.
+  let (m, ai) = s.readInitial()
+  if m != CborMajor.Tag:
+    raise newException(CborInvalidHeaderError, "expected tag")
+  let t = s.readAddInfo(ai)
+  if t != tag.uint64:
+    raise newException(CborInvalidHeaderError, "unexpected tag value")
+  s.cborUnpack(value)
 # ---- Object and tuple encoding/decoding ----
 
 template hasMode(s: Stream, m: EncodingMode): bool =
@@ -122,6 +143,14 @@ proc cborPackObjectMap[T](s: Stream, val: T) {.inline.} =
   for k, v in fieldPairs(val):
     s.cborPack(k)
     s.cborPack undistinctPack(v)
+
+proc cborPack*[T](s: Stream, val: T) =
+  ## If a cborTag(T) is declared, serialize as tag(cborTag(T)) + cborPack(T).
+  when compiles(cborTag(T)):
+    s.cborPackTag(cborTag(T))
+    s.cborPack(val)
+  else:
+    s.cborPack(val)
 
 proc cborPack*[T: tuple|object](s: Stream, val: T) =
   if s.hasMode(CborObjToMap):
@@ -204,6 +233,13 @@ proc cborUnpackObjectMap[T](s: Stream, val: var T) {.inline.} =
       if not matched:
         s.skipCborMsg()
       inc i
+
+proc cborUnpack*[T](s: Stream, val: var T) =
+  ## If a cborTag(T) is declared, require and consume the tag before unpacking T.
+  when compiles(cborTag(T)):
+    s.unpackExpectTag(cborTag(T), val)
+  else:
+    s.cborUnpack(val)
 
 proc cborUnpack*[T: tuple|object](s: Stream, val: var T) =
   let pos = s.getPosition()
