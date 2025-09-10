@@ -29,13 +29,27 @@ suite "CBOR objects/tuples":
     check d == p
 
   test "tuple as array roundtrip":
+    let t: (int, string) = (5, "hi")
+    # array form default
+    check toCbor(t) == "\x82\x05\x62hi"
+    let d1 = fromCbor(toCbor(t), (int, string))
+    check d1 == t
+
+  test "tuple as map roundtrip":
+    let t: (int, string) = (5, "hi")
+    # map form
+    let encMap = toCbor(t, {CborObjToMap, CborCanonical})
+    let d2 = fromCbor(encMap, (int, string))
+    check d2 == t
+
+  test "named tuple as array roundtrip":
     let t: Pt = (x: 5, y: "hi")
     # array form default
     check toCbor(t) == "\x82\x05\x62hi"
     let d1 = fromCbor(toCbor(t), Pt)
     check d1 == t
 
-  test "tuple as map roundtrip":
+  test "named tuple as map roundtrip":
     let t: Pt = (x: 5, y: "hi")
     # map form
     let encMap = toCbor(t, {CborObjToMap, CborCanonical})
