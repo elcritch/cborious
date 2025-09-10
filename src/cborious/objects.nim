@@ -92,13 +92,21 @@ proc readOneTag*(s: Stream, tagOut: var CborTag): bool =
   return false
 
 proc cborExpectTag*(s: Stream, tag: CborTag) =
-  ## Requires the next item to be a tag with the specified id, then unpacks a value of type T.
-  let (m, ai) = s.readInitial()
-  if m != CborMajor.Tag:
-    raise newException(CborInvalidHeaderError, "expected tag")
-  let t = s.readAddInfo(ai)
-  if t != tag.uint64:
-    raise newException(CborInvalidHeaderError, "unexpected tag value")
+  ## Requires the next item to be a tag with the specified id.
+  ## Skips an optional leading Self-Described CBOR tag (RFC 8949 §3.4.6).
+  var first = true
+  while true:
+    let (m, ai) = s.readInitial()
+    if m != CborMajor.Tag:
+      raise newException(CborInvalidHeaderError, "expected tag")
+    let t = s.readAddInfo(ai)
+    if t == SelfDescribeTagId:
+      # Allow exactly one or more self-describe tags in front; continue.
+      first = false
+      continue
+    if t != tag.uint64:
+      raise newException(CborInvalidHeaderError, "unexpected tag value")
+    break
 # ---- Object and tuple encoding/decoding ----
 
 template hasMode(s: Stream, m: EncodingMode): bool =

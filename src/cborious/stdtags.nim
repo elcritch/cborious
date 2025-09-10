@@ -14,6 +14,9 @@ proc cborTag*(tp: typedesc[DateTime]): CborTag =
 proc cborTag*(tp: typedesc[Time]): CborTag =
   result = 1.CborTag
 
+proc cborTag*[T](tp: typedesc[set[T]]): CborTag =
+  result = 258.CborTag
+
 proc cborPack*(s: Stream, val: DateTime) =
   let isoDate = val.format("yyyy-MM-dd'T'HH:mm:ss'Z'")
   s.cborPackTag(cborTag(DateTime))

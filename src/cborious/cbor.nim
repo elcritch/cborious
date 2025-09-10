@@ -361,6 +361,10 @@ proc cborPackTag*(s: Stream, tag: CborTag) =
   ## Writes a CBOR tag header with the given tag value.
   cborPackInt(s, tag.uint64, CborMajor.Tag)
 
+proc cborPackSelfDescribe*(s: Stream) =
+  ## Writes the RFC 8949 §3.4.6 Self-Described CBOR tag (0xD9D9F7).
+  cborPackTag(s, CborTag(SelfDescribeTagId))
+
 
 # Map (major type 5)
 proc cborPack*[K, V](s: Stream, val: Table[K, V]) =

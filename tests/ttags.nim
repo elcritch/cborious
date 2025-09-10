@@ -58,3 +58,27 @@ suite "CBOR tags & timestamps":
     s.setPosition(0)
     let pp = unpack(s, Person)
     check pp == p
+
+  test "self-described CBOR prefix (encode + decode)":
+    # Encode a simple integer with self-describe mode; expect 0xD9D9F7 prefix
+    var s1 = CborStream.init()
+    s1.encodingMode = {CborSelfDescribe}
+    pack(s1, 42)
+    check s1.data.len >= 3
+    check s1.data[0..2] == "\xD9\xD9\xF7"
+    # Decode back from the same data
+    s1.setPosition(0)
+    let i1 = unpack(s1, int)
+    check i1 == 42
+
+  test "self-described CBOR prefix and tags (encode + decode)":
+    # Ensure tagged types still decode with leading self-describe tag
+    var s2 = CborStream.init()
+    s2.encodingMode = {CborSelfDescribe}
+    var dt: DateTime = parse("2013-03-21T20:04:00Z", "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    pack(s2, dt)
+    check s2.data.len >= 3
+    check s2.data[0..2] == "\xD9\xD9\xF7"
+    s2.setPosition(0)
+    let dt2 = unpack(s2, DateTime)
+    check dt2 == dt

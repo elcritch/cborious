@@ -15,7 +15,11 @@ proc unpack*[T](s: CborStream, val: typedesc[T]): T {.inline.} =
   unpack(s, result)
 
 # # Generic pack wrapper matching msgpack4nim patterns
-proc pack*[T](s: CborStream, val: T) = s.cborPack(val)
+proc pack*[T](s: CborStream, val: T) =
+  # Optionally emit a Self-Described CBOR tag at the start.
+  if CborSelfDescribe in s.encodingMode:
+    s.cborPackSelfDescribe()
+  s.cborPack(val)
 
 proc toCbor*[T](val: T, encodingMode: set[EncodingMode] = {CborObjToArray}): string =
   var s = CborStream.init(sizeof(T))

@@ -11,6 +11,7 @@ type
     CborCanonical
     CborEnumAsString
     CborCheckHoleyEnums
+    CborSelfDescribe
 
   CborStream* = ref object of StringStreamObj
     encodingMode: set[EncodingMode]

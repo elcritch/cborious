@@ -24,6 +24,9 @@ type
 const
   AiIndef* = 31'u8
 
+  # RFC 8949 §3.4.6 Self-Described CBOR (0xD9D9F7)
+  SelfDescribeTagId* = 55799'u64
+
 proc `==`*(a: CborTag, b: CborTag): bool {.borrow.}
 
 proc `$`*(a: CborTag): string =
