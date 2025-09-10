@@ -17,17 +17,20 @@ proc unpack*[T](s: CborStream, val: typedesc[T]): T {.inline.} =
 # # Generic pack wrapper matching msgpack4nim patterns
 proc pack*[T](s: CborStream, val: T) = s.cborPack(val)
 
-proc toCbor*[T](val: T): string =
+proc toCbor*[T](val: T, encodingMode: set[EncodingMode] = {CBOR_OBJ_TO_ARRAY}): string =
   var s = CborStream.init(sizeof(T))
+  s.encodingMode = encodingMode
   s.cborPack(val)
   result = move s.data
 
-proc fromCbor*[T](data: sink string, val: var T) =
+proc fromCbor*[T](data: sink string, val: var T, encodingMode: set[EncodingMode] = {CBOR_OBJ_TO_ARRAY}) =
   var s = CborStream.init(data)
+  s.encodingMode = encodingMode
   s.setPosition(0)
   s.unpack(val)
 
-proc fromCbor*[T](data: sink string, val: typedesc[T]): T =
+proc fromCbor*[T](data: sink string, val: typedesc[T], encodingMode: set[EncodingMode] = {CBOR_OBJ_TO_ARRAY}): T =
   var s = CborStream.init(data)
+  s.encodingMode = encodingMode
   s.setPosition(0)
   s.unpack(result)

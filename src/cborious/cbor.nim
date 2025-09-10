@@ -362,7 +362,7 @@ proc cborPackTag*(s: Stream, tag: CborTag) =
 # Map (major type 5)
 proc cborPack*[K, V](s: Stream, val: Table[K, V]) =
   # Canonical only when using CborStream and canonicalMode is enabled
-  if s of CborStream and CborStream(s).getCanonicalMode():
+  if s of CborStream and CborStream(s).encodingMode().contains(CBOR_CONONICAL):
     var items: seq[tuple[keyEnc: string, k: K, v: V]]
     items.setLen(0)
     for k, v in val.pairs:
@@ -381,7 +381,7 @@ proc cborPack*[K, V](s: Stream, val: Table[K, V]) =
       s.cborPack(v)
 
 proc cborPack*[K, V](s: Stream, val: OrderedTable[K, V]) =
-  if s of CborStream and CborStream(s).getCanonicalMode():
+  if s of CborStream and CborStream(s).encodingMode().contains(CBOR_CONONICAL):
     var items: seq[tuple[keyEnc: string, k: K, v: V]]
     items.setLen(0)
     for k, v in val.pairs:
