@@ -72,7 +72,7 @@ proc init*(x: typedesc[CborStream], data: sink string): CborStream =
     result.readDataImpl = ss.readDataImpl
     result.peekDataImpl = ss.peekDataImpl
     result.writeDataImpl = ss.writeDataImpl
-  result.encodingMode = {CBOR_OBJ_TO_ARRAY, }
+  result.encodingMode = {CborObjToArray, CborObjToMap, CborObjToStream, CborCanonical, CborEnumAsString}
 
 proc init*(x: typedesc[CborStream], cap: int = 0): CborStream =
   ## Initialize a CborStream with capacity.
