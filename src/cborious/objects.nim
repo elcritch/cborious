@@ -24,10 +24,13 @@
 #-------------------------------------
 
 import std/macros
+import std/algorithm
 
 import ./types
 import ./stream
 import ./cbor
+
+# ---- Distinct helpers (must appear before use) ----
 
 proc getParamIdent(n: NimNode): NimNode =
   n.expectKind({nnkIdent, nnkVarTy, nnkSym})
@@ -75,3 +78,144 @@ template undistinctPack*(x: typed): untyped =
 
 template undistinctUnpack*(x: typed): untyped =
   undistinctImpl(x, type(x), bindSym("cborUnpack", brForceOpen))
+
+# ---- Object and tuple encoding/decoding ----
+
+template hasMode(s: Stream, m: EncodingMode): bool =
+  (s of CborStream) and (m in CborStream(s).encodingMode)
+
+proc cborPackObjectArray[T](s: Stream, val: T) {.inline.} =
+  var len = 0
+  for _ in fields(val): inc len
+  cborPackInt(s, uint64(len), CborMajor.Array)
+  for field in fields(val):
+    s.cborPack undistinctPack(field)
+
+proc cborPackObjectMap[T](s: Stream, val: T) {.inline.} =
+  # Canonical map key ordering when using CborStream + CborCanonical
+  when true:
+    if s of CborStream and CborCanonical in CborStream(s).encodingMode:
+      var items: seq[tuple[keyEnc: string, name: string, idx: int]] = @[]
+      var i = 0
+      for k, _ in fieldPairs(val):
+        var ks = CborStream.init()
+        ks.cborPack(k)
+        items.add((move ks.data, k, i))
+        inc i
+      items.sort(proc(a, b: typeof(items[0])): int = cmp(a.keyEnc, b.keyEnc))
+      cborPackInt(s, uint64(items.len), CborMajor.Map)
+      for it in items:
+        # write key encoding directly
+        for ch in it.keyEnc: s.write(ch)
+        # write value by field index order
+        var j = 0
+        for field in fields(val):
+          if j == it.idx:
+            s.cborPack undistinctPack(field)
+            break
+          inc j
+      return
+  # Non-canonical: preserve declaration order
+  var len = 0
+  for k, v in fieldPairs(val): inc len
+  cborPackInt(s, uint64(len), CborMajor.Map)
+  for k, v in fieldPairs(val):
+    s.cborPack(k)
+    s.cborPack undistinctPack(v)
+
+proc cborPack*[T: tuple|object](s: Stream, val: T) =
+  if s.hasMode(CborObjToMap):
+    s.cborPackObjectMap(val)
+  elif s.hasMode(CborObjToArray):
+    s.cborPackObjectArray(val)
+  elif s.hasMode(CborObjToStream):
+    for field in fields(val):
+      s.cborPack undistinctPack(field)
+  else:
+    # default to array for non-CborStream
+    s.cborPackObjectArray(val)
+
+proc cborUnpackObjectArray[T](s: Stream, val: var T) {.inline.} =
+  let (major, ai) = s.readInitialSkippingTags()
+  if major != CborMajor.Array:
+    raise newException(CborInvalidHeaderError, "expected array for object/tuple")
+  var count = 0
+  for _ in fields(val): inc count
+  if ai == AiIndef:
+    # read exactly 'count' items then expect break
+    var i = 0
+    for field in fields(val):
+      s.cborUnpack undistinctUnpack(field)
+      inc i
+    # consume break
+    let b = s.readChar()
+    if uint8(ord(b)) != 0xff'u8:
+      raise newException(CborInvalidHeaderError, "missing break in indefinite array")
+  else:
+    let n = int(s.readAddInfo(ai))
+    if n != count:
+      raise newException(CborInvalidHeaderError, "object/tuple len mismatch")
+    for field in fields(val):
+      s.cborUnpack undistinctUnpack(field)
+
+proc cborUnpackObjectMap[T](s: Stream, val: var T) {.inline.} =
+  let (major, ai) = s.readInitialSkippingTags()
+  if major != CborMajor.Map:
+    raise newException(CborInvalidHeaderError, "expected map for object/tuple")
+  # Build name->field setter closures via iteration over fields
+  template assignField(name: string) =
+    var i = 0
+    for k, v in fieldPairs(val):
+      if k == name:
+        s.cborUnpack undistinctUnpack(v)
+        break
+      inc i
+  if ai == AiIndef:
+    while true:
+      let pos = s.getPosition()
+      let b = s.readChar()
+      if uint8(ord(b)) == 0xff'u8: break
+      s.setPosition(pos)
+      var key: string
+      s.cborUnpack(key)
+      # if unknown, skip value
+      var matched = false
+      var i = 0
+      for k, v in fieldPairs(val):
+        if k == key:
+          s.cborUnpack undistinctUnpack(v)
+          matched = true
+          break
+        inc i
+      if not matched:
+        s.skipCborMsg()
+  else:
+    let n = int(s.readAddInfo(ai))
+    var i = 0
+    while i < n:
+      var key: string
+      s.cborUnpack(key)
+      var matched = false
+      for k, v in fieldPairs(val):
+        if k == key:
+          s.cborUnpack undistinctUnpack(v)
+          matched = true
+          break
+      if not matched:
+        s.skipCborMsg()
+      inc i
+
+proc cborUnpack*[T: tuple|object](s: Stream, val: var T) =
+  let pos = s.getPosition()
+  let (major, _) = s.readInitialSkippingTags()
+  s.setPosition(pos)
+  case major
+  of CborMajor.Array:
+    s.cborUnpackObjectArray(val)
+  of CborMajor.Map:
+    s.cborUnpackObjectMap(val)
+  else:
+    # stream style: decode fields directly in order
+    for field in fields(val):
+      s.cborUnpack undistinctUnpack(field)
+ 

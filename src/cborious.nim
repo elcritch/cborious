@@ -4,9 +4,9 @@
 
 ## Public re-exports and msgpack4nim-style API for CBOR encode/decode
 import std/streams
-import cborious/[types, stream, cbor]
+import cborious/[types, stream, cbor, objects]
 
-export stream, types, cbor
+export stream, types, cbor, objects
 
 
 proc unpack*[T](s: CborStream, val: var T) = s.cborUnpack(val)
