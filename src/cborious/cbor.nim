@@ -3,6 +3,9 @@ import ./stream
 import std/tables
 import std/algorithm
 import std/math
+import std/typetraits
+import std/enumutils
+
 
 # ---- CBOR core encode/decode (ints, bools) ----
 
@@ -581,8 +584,24 @@ proc skipCborMsg*(s: Stream) =
 
 # ---- Enums ----
 
+{.warning[HoleEnumConv]:off.}
 proc toEnum*[T: enum](val: SomeInteger): T =
   T(val)
+
+proc allEnumValues*[T: enum](): set[T] =
+  var aa: set[T]
+  for x in T.items():
+    aa.incl(x)
+  aa
+
+proc toEnumChecked*[T: enum](val: SomeInteger): T =
+  result = T(val)
+  when T is HoleyEnum:
+    const anyVal = allEnumValues[T]()
+    if result notin anyVal:
+      raise newException(CborInvalidArgError, "invalid enum value: " & $val)
+
+{.warning[HoleEnumConv]:on.}
 
 proc cborPack*[T: enum](s: Stream, val: T) =
   ## Pack Nim enums; optionally as string when CborEnumAsString is enabled.
@@ -604,7 +623,11 @@ proc cborUnpack*[T: enum](s: Stream, val: var T) =
     var i = int(ord(low(T)))
     let hi = int(ord(high(T)))
     while i <= hi:
-      let e = toEnum[T](i)
+      let e =
+        if s of CborStream and CborStream(s).encodingMode().contains(CborCheckHoleyEnums):
+          toEnumChecked[T](i)
+        else:
+          toEnum[T](i)
       if $e == name:
         val = e
         found = true
@@ -624,7 +647,10 @@ proc cborUnpack*[T: enum](s: Stream, val: var T) =
         tmp = - (int64(n) + 1'i64)
       else:
         tmp = int64(n)
-    val = toEnum[T](tmp)
+    val = if s of CborStream and CborStream(s).encodingMode().contains(CborCheckHoleyEnums):
+          toEnumChecked[T](tmp)
+        else:
+          toEnum[T](tmp)
   else:
     raise newException(CborInvalidHeaderError, "expected enum encoded as int or string")
 

@@ -10,11 +10,12 @@ type
     CborObjToStream
     CborCanonical
     CborEnumAsString
+    CborCheckHoleyEnums
 
   CborStream* = ref object of StringStreamObj
     encodingMode: set[EncodingMode]
 
-const defaultCborEncodingMode*: set[EncodingMode] = {CborObjToArray}
+const defaultCborEncodingMode*: set[EncodingMode] = {CborObjToArray, CborCheckHoleyEnums}
 
 {.push gcsafe.}
 
