@@ -8,6 +8,8 @@ suite "CBOR objects/tuples":
     age: int
     active: bool
 
+  type Pt = tuple[x: int, y: string]
+
   test "object as array (canonical bytes + roundtrip)":
     let p = Person(name: "Ann", age: 30, active: true)
     # 83, 63 'A''n''n', 18 1e, f5
@@ -26,13 +28,15 @@ suite "CBOR objects/tuples":
     let d = fromCbor(enc, Person)
     check d == p
 
-  test "tuple as array + map roundtrip":
-    type Pt = tuple[x: int, y: string]
+  test "tuple as array roundtrip":
     let t: Pt = (x: 5, y: "hi")
     # array form default
     check toCbor(t) == "\x82\x05\x62hi"
     let d1 = fromCbor(toCbor(t), Pt)
     check d1 == t
+
+  test "tuple as map roundtrip":
+    let t: Pt = (x: 5, y: "hi")
     # map form
     let encMap = toCbor(t, {CborObjToMap, CborCanonical})
     # keys: 'x', 'y' -> 'x' < 'y'
