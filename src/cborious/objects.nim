@@ -26,6 +26,8 @@
 import std/macros
 
 import ./types
+import ./stream
+import ./cbor
 
 proc getParamIdent(n: NimNode): NimNode =
   n.expectKind({nnkIdent, nnkVarTy, nnkSym})
@@ -74,3 +76,68 @@ template undistinct_pack*(x: typed): untyped =
 template undistinct_unpack*(x: typed): untyped =
   undistinctImpl(x, type(x), bindSym("unpack_type", brForceOpen))
 
+proc unpack_type*[Stream; T: tuple|object](s: Stream, val: var T) =
+  template dry_and_wet(): untyped =
+    when defined(msgpack_obj_to_map):
+      let len = s.unpack_map()
+      var name: string
+      var found: bool
+      for i in 0..len-1:
+        if not s.is_string:
+          s.skip_item()
+          s.skip_msg()
+          continue
+        s.cborUnpack(name)
+        found = false
+        for field, value in fieldPairs(val):
+          if field == name:
+            found = true
+            s.cborUnpack(value)
+            break
+        if not found:
+          s.skip_item()
+    elif defined(msgpack_obj_to_stream):
+      for field in fields(val):
+        s.cborUnpack(field)
+    else:
+      let arrayLen = s.unpack_array()
+      var length = 0
+      for field in fields(val):
+        s.cborUnpack(field)
+        inc length
+      doAssert(arrayLen == length, "object/tuple len mismatch")
+
+  when Stream is CborStream:
+    case s.encodingMode
+    of CBOR_OBJ_TO_ARRAY:
+      let arrayLen = s.unpack_array()
+      var len = 0
+      for field in fields(val):
+        unpack_proxy(field)
+        inc len
+      doAssert(arrayLen == len, "object/tuple len mismatch")
+    of CBOR_OBJ_TO_MAP:
+      let len = s.unpack_map()
+      var name: string
+      var found: bool
+      for i in 0..len-1:
+        if not s.is_string:
+          s.skip_item()
+          s.skip_msg()
+          continue
+        unpack_proxy(name)
+        found = false
+        for field, value in fieldPairs(val):
+          if field == name:
+            found = true
+            unpack_proxy(value)
+            break
+        if not found:
+          s.skip_item()
+    of CBOR_OBJ_TO_STREAM:
+      for field in fields(val):
+        unpack_proxy(field)
+    else:
+      dry_and_wet()
+  else:
+    dry_and_wet()
