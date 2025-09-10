@@ -33,6 +33,14 @@ proc cborPackInt*(s: Stream, v: uint64, maj: CborMajor) =
 proc cborPack*(s: Stream, val: bool) =
   writeInitial(s, CborMajor.Simple, uint8(val) + 20'u8)
 
+proc cborPackNull*(s: Stream) =
+  ## Pack CBOR null (simple value 22).
+  writeInitial(s, CborMajor.Simple, 22'u8)
+
+proc cborPackUndefined*(s: Stream) =
+  ## Pack CBOR undefined (simple value 23).
+  writeInitial(s, CborMajor.Simple, 23'u8)
+
 proc cborPack*(s: Stream, val: uint64) = cborPackInt(s, val, CborMajor.Unsigned)
 proc cborPack*(s: Stream, val: uint32) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
 proc cborPack*(s: Stream, val: uint16) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
