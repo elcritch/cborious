@@ -73,5 +73,5 @@ macro undistinctImpl*(x: typed, typ: typedesc, w: typed): untyped =
 template undistinctPack*(x: typed): untyped =
   undistinctImpl(x, type(x), bindSym("cborPack", brForceOpen))
 
-template undistinct_unpack*(x: typed): untyped =
+template undistinctUnpack*(x: typed): untyped =
   undistinctImpl(x, type(x), bindSym("cborUnpack", brForceOpen))
