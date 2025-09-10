@@ -23,13 +23,13 @@ proc toCbor*[T](val: T, encodingMode: set[EncodingMode] = {CborObjToArray}): str
   s.cborPack(val)
   result = move s.data
 
-proc fromCbor*[T](data: sink string, val: var T, encodingMode: set[EncodingMode] = {CborObjToArray}) =
+proc fromCbor*[T](data: sink string, val: var T, encodingMode = defaultEncodingMode) =
   var s = CborStream.init(data)
   s.encodingMode = encodingMode
   s.setPosition(0)
   s.unpack(val)
 
-proc fromCbor*[T](data: sink string, val: typedesc[T], encodingMode: set[EncodingMode] = {CborObjToArray}): T =
+proc fromCbor*[T](data: sink string, val: typedesc[T], encodingMode = defaultEncodingMode): T =
   var s = CborStream.init(data)
   s.encodingMode = encodingMode
   s.setPosition(0)

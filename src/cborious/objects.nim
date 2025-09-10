@@ -146,9 +146,9 @@ proc cborPackObjectMap[T](s: Stream, val: T) {.inline.} =
 
 proc cborPack*[T: tuple|object](s: Stream, val: T) =
   mixin cborTag
-  static: echo "cborPack: OBJECTS"
+  static: echo "cborPack: OBJECTS: ", $T
   static: echo "cborPack: cborTag: " & $compiles(cborTag(T))
-  when compiles(cborTag(T)):
+  when compiles(cborTag(T) is CborTag):
     static: echo "cborPack: cborTag(T): " & $cborTag(T)
     s.cborPackTag(cborTag(T))
     s.cborPack(val)

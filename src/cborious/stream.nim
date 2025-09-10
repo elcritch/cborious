@@ -15,6 +15,8 @@ type
   CborStream* = ref object of StringStreamObj
     encodingMode: set[EncodingMode]
 
+const defaultEncodingMode*: set[EncodingMode] = {CborObjToArray}
+
 {.push gcsafe.}
 
 # Endianness-aware utility functions (following msgpack4nim pattern)
@@ -56,7 +58,7 @@ else:
 # Additional utility functions for different sizes (following msgpack4nim pattern)
 # These are used internally and kept for potential future expansion
 
-proc init*(x: typedesc[CborStream], data: sink string): CborStream =
+proc init*(x: typedesc[CborStream], data: sink string, encodingMode = defaultEncodingMode): CborStream =
   ## Initialize a CborStream backed by the provided string buffer.
   result = new x
   var ss = newStringStream()
@@ -72,7 +74,7 @@ proc init*(x: typedesc[CborStream], data: sink string): CborStream =
     result.readDataImpl = ss.readDataImpl
     result.peekDataImpl = ss.peekDataImpl
     result.writeDataImpl = ss.writeDataImpl
-  result.encodingMode = {CborObjToArray, CborObjToMap, CborObjToStream, CborCanonical, CborEnumAsString}
+  result.encodingMode = {}
 
 proc init*(x: typedesc[CborStream], cap: int = 0): CborStream =
   ## Initialize a CborStream with capacity.
