@@ -1,5 +1,6 @@
 import unittest
 import std/tables
+import std/math
 import cborious
 
 template checkPackToString[T](v: T, expected: string) =
@@ -262,3 +263,43 @@ suite "CBOR basics":
       t2[1] = "y"
       # Expect: A2, 01, 61 'y', 0A, 61 'x'
       check packToString(t2) == "\xa2\x01\x61y\x0a\x61x"
+
+  test "roundtrip float64":
+    var buf = CborStream.init()
+    for v in [0.0, -0.0, 1.0, -2.5, 1e-10, 1e10, Inf, NegInf]:
+      buf.setPosition(0)
+      pack(buf, v)
+      buf.setPosition(0)
+      let d = unpack(buf, float64)
+      if classify(v) == fcNaN:
+        check isNaN(d)
+      else:
+        # exact for the above values
+        check d == v
+    # NaN roundtrip
+    block:
+      var v = NaN
+      buf.setPosition(0)
+      pack(buf, v)
+      buf.setPosition(0)
+      let d = unpack(buf, float64)
+      check isNaN(d)
+
+  test "roundtrip float32":
+    var buf = CborStream.init()
+    for v in [0.0'f32, -0.0'f32, 1.5'f32, 3.1415927'f32, -2.5'f32]:
+      buf.setPosition(0)
+      pack(buf, v)
+      buf.setPosition(0)
+      let d = unpack(buf, float32)
+      check d == v
+
+  test "canonical encodings floats":
+    # float32 1.5 -> 0xfa 3f c0 00 00
+    checkPackToString(1.5'f32, "\xfa\x3f\xc0\x00\x00")
+    # float32 -0.0 -> 0xfa 80 00 00 00
+    checkPackToString(-0.0'f32, "\xfa\x80\x00\x00\x00")
+    # float64 1.5 -> 0xfb 3f f8 00 00 00 00 00 00
+    checkPackToString(1.5, "\xfb\x3f\xf8\x00\x00\x00\x00\x00\x00")
+    # float64 -0.0 -> 0xfb 80 00 00 00 00 00 00 00
+    checkPackToString(-0.0, "\xfb\x80\x00\x00\x00\x00\x00\x00\x00")

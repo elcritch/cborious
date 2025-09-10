@@ -2,6 +2,7 @@ import ./types
 import ./stream
 import std/tables
 import std/algorithm
+import std/math
 
 # ---- CBOR core encode/decode (ints, bools) ----
 
@@ -45,6 +46,26 @@ proc pack_type*(s: Stream, val: int32) = pack_type(s, int64(val))
 proc pack_type*(s: Stream, val: int16) = pack_type(s, int64(val))
 proc pack_type*(s: Stream, val: int8)  = pack_type(s, int64(val))
 proc pack_type*(s: Stream, val: int)   = pack_type(s, int64(val))
+
+
+# ---- Floats (major type 7, AI 26/27) ----
+
+template writeFloatHeader(s: Stream, ai: uint8) =
+  ## Writes the initial byte for a floating-point number.
+  s.writeInitial(CborMajor.Simple, ai)
+
+proc pack_type*(s: Stream, val: float32) =
+  ## Encode IEEE-754 single-precision (32-bit) float
+  s.writeFloatHeader(26'u8) # additional info 26 for 32-bit float
+  let bits = cast[uint32](val)
+  s.store32(bits)
+
+proc pack_type*(s: Stream, val: float64) =
+  ## Encode IEEE-754 double-precision (64-bit) float
+  s.writeFloatHeader(27'u8) # additional info 27 for 64-bit float
+  let bits = cast[uint64](val)
+  s.store64(bits)
+
 
 
 # ---- Decoding ----
@@ -144,6 +165,70 @@ proc unpack_type*(s: Stream, val: var int) =
     var x32: int32
     s.unpack_type(x32)
     val = int(x32)
+
+# ---- Float decoding ----
+
+proc halfToFloat32(bits: uint16): float32 =
+  ## Convert IEEE-754 half-precision to float32.
+  let s = (bits shr 15) and 0x1'u16
+  let e = (bits shr 10) and 0x1F'u16
+  let f = bits and 0x3FF'u16
+  if e == 0x1F'u16:
+    # Inf / NaN
+    let sign = uint32(s) shl 31
+    let frac32 = uint32(f) shl 13
+    let exp32 = 0xFF'u32 shl 23
+    return cast[float32](sign or exp32 or frac32)
+  elif e == 0'u16:
+    if f == 0'u16:
+      # signed zero
+      let sign = uint32(s) shl 31
+      return cast[float32](sign)
+    else:
+      # subnormal: value = (-1)^s * f * 2^-24
+      let signMul = (if s == 0'u16: 1.0'f32 else: -1.0'f32)
+      return signMul * float32(f) * (1.0'f32 / float32(1 shl 24))
+  else:
+    # normal number
+    let sign = uint32(s) shl 31
+    let exp32 = uint32(uint16(e + 112'u16)) shl 23 # 127-15 = 112 bias delta
+    let frac32 = uint32(f) shl 13
+    return cast[float32](sign or exp32 or frac32)
+
+proc unpack_type*(s: Stream, val: var float32) =
+  let (major, ai) = s.readInitialSkippingTags()
+  if major != CborMajor.Simple:
+    raise newException(CborInvalidHeaderError, "expected simple/float value")
+  case ai
+  of 26'u8:
+    let bits = s.unstore32()
+    val = cast[float32](bits)
+  of 27'u8:
+    let bits = s.unstore64()
+    val = float32(cast[float64](bits))
+  of 25'u8:
+    let bits = s.unstore16()
+    val = halfToFloat32(uint16(bits))
+  else:
+    raise newException(CborInvalidHeaderError, "expected CBOR float (ai 25/26/27)")
+
+proc unpack_type*(s: Stream, val: var float64) =
+  let (major, ai) = s.readInitialSkippingTags()
+  if major != CborMajor.Simple:
+    raise newException(CborInvalidHeaderError, "expected simple/float value")
+  case ai
+  of 27'u8:
+    let bits = s.unstore64()
+    val = cast[float64](bits)
+  of 26'u8:
+    let bits = s.unstore32()
+    val = float64(cast[float32](bits))
+  of 25'u8:
+    let bits = s.unstore16()
+    val = float64(halfToFloat32(uint16(bits)))
+  else:
+    raise newException(CborInvalidHeaderError, "expected CBOR float (ai 25/26/27)")
+
 
 proc unpack_type*(s: Stream, val: var uint32) =
   var x: uint64
