@@ -251,3 +251,48 @@ proc cborUnpack*[T: tuple|object](s: Stream, val: var T) =
     for field in fields(val):
       s.cborUnpack undistinctUnpack(field)
  
+
+# ---- ref/ptr support and null/undefined handling ----
+
+proc isNullOrUndef(s: Stream): bool =
+  ## Peek the next non-tag item and determine if it is CBOR null or undefined.
+  let pos = s.getPosition()
+  # Skip tags
+  var m: CborMajor
+  var ai: uint8
+  while true:
+    let (mm, aai) = s.readInitial()
+    if mm != CborMajor.Tag:
+      m = mm; ai = aai
+      break
+    discard s.readAddInfo(aai)
+  s.setPosition(pos)
+  result = (m == CborMajor.Simple and (ai == 22'u8 or ai == 23'u8))
+
+proc cborPack*[T](s: Stream, val: ref T) =
+  ## Canonical: encode nil ref as CBOR null, otherwise encode the pointee.
+  if isNil(val): s.cborPackNull()
+  else: s.cborPack(val[])
+
+proc cborPack*[T](s: Stream, val: ptr T) =
+  ## Canonical: encode nil ptr as CBOR null, otherwise encode the pointee.
+  if val.isNil: s.cborPackNull()
+  else: s.cborPack(val[])
+
+proc cborUnpack*[T: ref](s: Stream, val: var T) =
+  ## Unpack into a Nim ref type, treating CBOR null/undefined as nil.
+  if s.isNullOrUndef():
+    # Consume the simple value
+    discard s.readInitialSkippingTags()
+    return
+  if isNil(val): new(val)
+  s.cborUnpack(val[])
+
+proc cborUnpack*[T](s: Stream, val: var ptr T) =
+  ## Unpack into a Nim ptr type, treating CBOR null/undefined as nil.
+  if s.isNullOrUndef():
+    discard s.readInitialSkippingTags()
+    return
+  if val.isNil:
+    val = cast[ptr T](alloc(sizeof(T)))
+  s.cborUnpack(val[])

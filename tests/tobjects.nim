@@ -32,6 +32,39 @@ suite "CBOR objects/tuples":
     s.cborUnpack(d)
     check d == p
 
+  test "ref object null/undefined handling":
+    type Node = ref object
+      x: int
+      y: string
+
+    # nil ref packs to CBOR null
+    var n: Node = nil
+    var s = CborStream.init()
+    pack(s, n)
+    check s.data == "\xf6"
+    # null decodes to nil
+    s.setPosition(0)
+    var d: Node
+    unpack(s, d)
+    check isNil(d)
+
+    # undefined decodes to nil
+    s = CborStream.init()
+    s.cborPackUndefined()
+    s.setPosition(0)
+    var d2: Node
+    unpack(s, d2)
+    check isNil(d2)
+
+    # non-nil roundtrip
+    n = Node(x: 7, y: "hi")
+    s = CborStream.init()
+    pack(s, n)
+    s.setPosition(0)
+    var d3: Node
+    unpack(s, d3)
+    check (not isNil(d3)) and d3.x == 7 and d3.y == "hi"
+
   test "object as map (canonical order)":
     let p = Person(name: "Ann", age: 30, active: true)
     let enc = toCbor(p, {CborObjToMap, CborCanonical})

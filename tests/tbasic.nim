@@ -420,6 +420,50 @@ suite "CBOR basics":
     let d2 = unpack(cs, Status2)
     check d2 == s2Error
 
+  test "null and undefined simple encodings":
+    var s = CborStream.init()
+    s.cborPackNull()
+    check s.data == "\xf6"
+    s = CborStream.init()
+    s.cborPackUndefined()
+    check s.data == "\xf7"
+
+  test "nil seq does not encode as null and decodes to nil":
+    var q: seq[int] # default-initialized (nil)
+    let enc = toCbor(q)
+    check enc == "\x80"
+    var s = CborStream.init()
+    s.cborPackNull()
+    s.setPosition(0)
+    var d: seq[int]
+    unpack(s, d)
+    # Re-encoding should produce CBOR null
+    check toCbor(d) == "\x80"
+
+  test "nil binary seq does not encode as null and decodes to nil":
+    var b: seq[uint8]
+    let enc = toCbor(b)
+    check enc == "\x40"
+    var s = CborStream.init()
+    s.cborPackUndefined()
+    s.setPosition(0)
+    var d: seq[uint8]
+    unpack(s, d)
+    check toCbor(d) == "\x40"
+
+  test "map decodes null/undefined as empty":
+    var s = CborStream.init()
+    s.cborPackNull()
+    s.setPosition(0)
+    var t = initTable[string, int]()
+    s.cborUnpackImpl(t)
+    check t.len == 0
+    s = CborStream.init()
+    s.cborPackUndefined()
+    s.setPosition(0)
+    s.cborUnpackImpl(t)
+    check t.len == 0
+
 suite "sets (canonical + roundtrip)":
   type Status = enum
     stOk

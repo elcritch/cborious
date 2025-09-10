@@ -350,6 +350,7 @@ proc cborPack*(s: Stream, val: seq[uint8]) = s.cborPack(val.toOpenArray(0, val.h
 
 # Text string (major type 3)
 proc cborPack*(s: Stream, val: string) =
+  # Strings in Nim are not typically nil in practice; encode length 0 as empty string.
   s.packLen(val.len, CborMajor.String)
   if val.len > 0:
     for ch in val:
@@ -445,6 +446,15 @@ proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
 
 proc cborUnpack*(s: Stream, val: var seq[byte]) =
   let (major, ai) = s.readInitialSkippingTags()
+  if major == CborMajor.Simple and (ai == 22'u8 or ai == 23'u8):
+    # null or undefined -> nil sequence
+    when compiles(isNil(val)):
+      val = nil
+      return
+    else:
+      # Fall back to empty when nil is not supported on target
+      val.setLen(0)
+      return
   if major != CborMajor.Binary:
     raise newException(CborInvalidHeaderError, "expected binary string")
   let data = s.readChunk(CborMajor.Binary, ai)
@@ -456,12 +466,24 @@ proc cborUnpack*(s: Stream, val: var seq[byte]) =
 
 proc cborUnpack*(s: Stream, val: var string) =
   let (major, ai) = s.readInitialSkippingTags()
+  if major == CborMajor.Simple and (ai == 22'u8 or ai == 23'u8):
+    # Treat null/undefined string as empty string (no nil string type)
+    val.setLen(0)
+    return
   if major != CborMajor.String:
     raise newException(CborInvalidHeaderError, "expected text string")
   val = s.readChunk(CborMajor.String, ai)
 
 proc cborUnpack*[T](s: Stream, val: var seq[T]) =
   let (major, ai) = s.readInitialSkippingTags()
+  if major == CborMajor.Simple and (ai == 22'u8 or ai == 23'u8):
+    # null or undefined -> nil sequence
+    when compiles(isNil(val)):
+      val = nil
+      return
+    else:
+      val.setLen(0)
+      return
   if major != CborMajor.Array:
     raise newException(CborInvalidHeaderError, "expected array")
   if ai == AiIndef:
@@ -488,6 +510,10 @@ type SomeMap[K, V] = Table[K, V] | OrderedTable[K, V]
 
 proc cborUnpackImpl*[K, V](s: Stream, val: var SomeMap[K, V]) =
   let (major, ai) = s.readInitialSkippingTags()
+  if major == CborMajor.Simple and (ai == 22'u8 or ai == 23'u8):
+    # CBOR null/undefined -> treat as empty map
+    val.clear()
+    return
   if major != CborMajor.Map:
     raise newException(CborInvalidHeaderError, "expected map")
   val.clear()
