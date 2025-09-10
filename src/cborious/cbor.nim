@@ -26,26 +26,26 @@ proc cborPackInt*(s: Stream, v: uint64, maj: CborMajor) =
     s.writeInitial(maj, 27'u8)
     s.store64(v)
 
-# Public pack_type overloads
-proc pack_type*(s: Stream, val: bool) =
+# Public cborPack overloads
+proc cborPack*(s: Stream, val: bool) =
   writeInitial(s, CborMajor.Simple, uint8(val) + 20'u8)
 
-proc pack_type*(s: Stream, val: uint64) = cborPackInt(s, val, CborMajor.Unsigned)
-proc pack_type*(s: Stream, val: uint32) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
-proc pack_type*(s: Stream, val: uint16) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
-proc pack_type*(s: Stream, val: uint8)  = cborPackInt(s, uint64(val), CborMajor.Unsigned)
-proc pack_type*(s: Stream, val: uint)   = cborPackInt(s, uint64(val), CborMajor.Unsigned)
+proc cborPack*(s: Stream, val: uint64) = cborPackInt(s, val, CborMajor.Unsigned)
+proc cborPack*(s: Stream, val: uint32) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
+proc cborPack*(s: Stream, val: uint16) = cborPackInt(s, uint64(val), CborMajor.Unsigned)
+proc cborPack*(s: Stream, val: uint8)  = cborPackInt(s, uint64(val), CborMajor.Unsigned)
+proc cborPack*(s: Stream, val: uint)   = cborPackInt(s, uint64(val), CborMajor.Unsigned)
 
-proc pack_type*(s: Stream, val: int64) =
+proc cborPack*(s: Stream, val: int64) =
   if val >= 0:
     cborPackInt(s, uint64(val), CborMajor.Unsigned)
   else:
     cborPackInt(s, uint64(-1'i64 - val), CborMajor.Negative)
 
-proc pack_type*(s: Stream, val: int32) = pack_type(s, int64(val))
-proc pack_type*(s: Stream, val: int16) = pack_type(s, int64(val))
-proc pack_type*(s: Stream, val: int8)  = pack_type(s, int64(val))
-proc pack_type*(s: Stream, val: int)   = pack_type(s, int64(val))
+proc cborPack*(s: Stream, val: int32) = cborPack(s, int64(val))
+proc cborPack*(s: Stream, val: int16) = cborPack(s, int64(val))
+proc cborPack*(s: Stream, val: int8)  = cborPack(s, int64(val))
+proc cborPack*(s: Stream, val: int)   = cborPack(s, int64(val))
 
 
 # ---- Floats (major type 7, AI 26/27) ----
@@ -107,7 +107,7 @@ proc float32ToHalfBits(v: float32): uint16 =
   if e >= 31: return uint16(sign or 0x7c00'u32)
   return uint16(sign or (uint32(e) shl 10) or (mant2 shr 13))
 
-proc pack_type*(s: Stream, val: float32) =
+proc cborPack*(s: Stream, val: float32) =
   ## Encode using minimal-size canonical: try half, else single.
   if isNaN(val):
     s.writeFloatHeader(25'u8)
@@ -126,7 +126,7 @@ proc pack_type*(s: Stream, val: float32) =
     s.writeFloatHeader(26'u8)
     s.store32(cast[uint32](val))
 
-proc pack_type*(s: Stream, val: float64) =
+proc cborPack*(s: Stream, val: float64) =
   ## Encode using minimal-size canonical: try half, then single, else double.
   if isNaN(val):
     s.writeFloatHeader(25'u8)
@@ -181,7 +181,7 @@ proc readInitialSkippingTags*(s: Stream): tuple[major: CborMajor, ai: uint8] =
       return (m, ai)
     discard s.readAddInfo(ai)
 
-proc unpack_type*(s: Stream, val: var bool) =
+proc cborUnpack*(s: Stream, val: var bool) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Simple:
     raise newException(CborInvalidHeaderError, "expected simple value")
@@ -191,13 +191,13 @@ proc unpack_type*(s: Stream, val: var bool) =
   else:
     raise newException(CborInvalidHeaderError, "expected CBOR bool")
 
-proc unpack_type*(s: Stream, val: var uint64) =
+proc cborUnpack*(s: Stream, val: var uint64) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Unsigned:
     raise newException(CborInvalidHeaderError, "expected unsigned integer")
   val = s.readAddInfo(ai)
 
-proc unpack_type*(s: Stream, val: var int64) =
+proc cborUnpack*(s: Stream, val: var int64) =
   let (major, ai) = s.readInitialSkippingTags()
   case major
   of CborMajor.Unsigned:
@@ -218,42 +218,42 @@ proc unpack_type*(s: Stream, val: var int64) =
   else:
     raise newException(CborInvalidHeaderError, "expected integer (major 0 or 1)")
 
-proc unpack_type*(s: Stream, val: var int32) =
+proc cborUnpack*(s: Stream, val: var int32) =
   var x: int64
-  s.unpack_type(x)
+  s.cborUnpack(x)
   if x < low(int32) or x > high(int32):
     raise newException(CborOverflowError, "int32 overflow")
   val = int32(x)
 
-proc unpack_type*(s: Stream, val: var int16) =
+proc cborUnpack*(s: Stream, val: var int16) =
   var x: int64
-  s.unpack_type(x)
+  s.cborUnpack(x)
   if x < low(int16) or x > high(int16):
     raise newException(CborOverflowError, "int16 overflow")
   val = int16(x)
 
-proc unpack_type*(s: Stream, val: var int8) =
+proc cborUnpack*(s: Stream, val: var int8) =
   var x: int64
-  s.unpack_type(x)
+  s.cborUnpack(x)
   if x < low(int8) or x > high(int8):
     raise newException(CborOverflowError, "int8 overflow")
   val = int8(x)
 
-proc unpack_type*(s: Stream, val: var int) =
+proc cborUnpack*(s: Stream, val: var int) =
   when sizeof(int) == 8:
     var x64: int64
-    s.unpack_type(x64)
+    s.cborUnpack(x64)
     val = int(x64)
   else:
     var x32: int32
-    s.unpack_type(x32)
+    s.cborUnpack(x32)
     val = int(x32)
 
 # ---- Float decoding ----
 
  
 
-proc unpack_type*(s: Stream, val: var float32) =
+proc cborUnpack*(s: Stream, val: var float32) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Simple:
     raise newException(CborInvalidHeaderError, "expected simple/float value")
@@ -270,7 +270,7 @@ proc unpack_type*(s: Stream, val: var float32) =
   else:
     raise newException(CborInvalidHeaderError, "expected CBOR float (ai 25/26/27)")
 
-proc unpack_type*(s: Stream, val: var float64) =
+proc cborUnpack*(s: Stream, val: var float64) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Simple:
     raise newException(CborInvalidHeaderError, "expected simple/float value")
@@ -288,35 +288,35 @@ proc unpack_type*(s: Stream, val: var float64) =
     raise newException(CborInvalidHeaderError, "expected CBOR float (ai 25/26/27)")
 
 
-proc unpack_type*(s: Stream, val: var uint32) =
+proc cborUnpack*(s: Stream, val: var uint32) =
   var x: uint64
-  s.unpack_type(x)
+  s.cborUnpack(x)
   if x > uint64(high(uint32)):
     raise newException(CborOverflowError, "uint32 overflow")
   val = uint32(x)
 
-proc unpack_type*(s: Stream, val: var uint16) =
+proc cborUnpack*(s: Stream, val: var uint16) =
   var x: uint64
-  s.unpack_type(x)
+  s.cborUnpack(x)
   if x > uint64(high(uint16)):
     raise newException(CborOverflowError, "uint16 overflow")
   val = uint16(x)
 
-proc unpack_type*(s: Stream, val: var uint8) =
+proc cborUnpack*(s: Stream, val: var uint8) =
   var x: uint64
-  s.unpack_type(x)
+  s.cborUnpack(x)
   if x > uint64(high(uint8)):
     raise newException(CborOverflowError, "uint8 overflow")
   val = uint8(x)
 
-proc unpack_type*(s: Stream, val: var uint) =
+proc cborUnpack*(s: Stream, val: var uint) =
   when sizeof(uint) == 8:
     var x64: uint64
-    s.unpack_type(x64)
+    s.cborUnpack(x64)
     val = uint(x64)
   else:
     var x32: uint32
-    s.unpack_type(x32)
+    s.cborUnpack(x32)
     val = uint(x32)
 
 
@@ -327,7 +327,7 @@ proc packLen(s: Stream, len: int, maj: CborMajor) {.inline.} =
   cborPackInt(s, uint64(len), maj)
 
 # Binary (major type 2): seq/array of uint8
-proc pack_type*(s: Stream, val: openArray[uint8]) =
+proc cborPack*(s: Stream, val: openArray[uint8]) =
   s.packLen(val.len, CborMajor.Binary)
   if val.len > 0:
     var i = 0
@@ -335,69 +335,69 @@ proc pack_type*(s: Stream, val: openArray[uint8]) =
       s.write(char(val[i]))
       inc i
 
-proc pack_type*(s: Stream, val: seq[uint8]) = s.pack_type(val.toOpenArray(0, val.high))
+proc cborPack*(s: Stream, val: seq[uint8]) = s.cborPack(val.toOpenArray(0, val.high))
 
 # Text string (major type 3)
-proc pack_type*(s: Stream, val: string) =
+proc cborPack*(s: Stream, val: string) =
   s.packLen(val.len, CborMajor.String)
   if val.len > 0:
     for ch in val:
       s.write(ch)
 
 # Array (major type 4)
-proc pack_type*[T](s: Stream, val: openArray[T]) =
+proc cborPack*[T](s: Stream, val: openArray[T]) =
   s.packLen(val.len, CborMajor.Array)
   for it in val:
-    s.pack_type(it)
+    s.cborPack(it)
 
-proc pack_type*[T](s: Stream, val: seq[T]) = s.pack_type(val.toOpenArray(0, val.high))
+proc cborPack*[T](s: Stream, val: seq[T]) = s.cborPack(val.toOpenArray(0, val.high))
 
 # ---- Tags (major type 6) generic helpers ----
 
-proc pack_tag*(s: Stream, tag: CborTag) =
+proc cborPackTag*(s: Stream, tag: CborTag) =
   ## Writes a CBOR tag header with the given tag value.
   cborPackInt(s, tag.uint64, CborMajor.Tag)
 
 
 # Map (major type 5)
-proc pack_type*[K, V](s: Stream, val: Table[K, V]) =
+proc cborPack*[K, V](s: Stream, val: Table[K, V]) =
   # Canonical only when using CborStream and canonicalMode is enabled
   if s of CborStream and CborStream(s).getCanonicalMode():
     var items: seq[tuple[keyEnc: string, k: K, v: V]]
     items.setLen(0)
     for k, v in val.pairs:
       var ks = CborStream.init()
-      ks.pack_type(k)
+      ks.cborPack(k)
       items.add((move ks.data, k, v))
     items.sort(proc(a, b: typeof(items[0])): int = cmp(a.keyEnc, b.keyEnc))
     s.packLen(items.len, CborMajor.Map)
     for it in items:
       for ch in it.keyEnc: s.write(ch)
-      s.pack_type(it.v)
+      s.cborPack(it.v)
   else:
     s.packLen(val.len, CborMajor.Map)
     for k, v in val.pairs:
-      s.pack_type(k)
-      s.pack_type(v)
+      s.cborPack(k)
+      s.cborPack(v)
 
-proc pack_type*[K, V](s: Stream, val: OrderedTable[K, V]) =
+proc cborPack*[K, V](s: Stream, val: OrderedTable[K, V]) =
   if s of CborStream and CborStream(s).getCanonicalMode():
     var items: seq[tuple[keyEnc: string, k: K, v: V]]
     items.setLen(0)
     for k, v in val.pairs:
       var ks = CborStream.init()
-      ks.pack_type(k)
+      ks.cborPack(k)
       items.add((move ks.data, k, v))
     items.sort(proc(a, b: typeof(items[0])): int = cmp(a.keyEnc, b.keyEnc))
     s.packLen(items.len, CborMajor.Map)
     for it in items:
       for ch in it.keyEnc: s.write(ch)
-      s.pack_type(it.v)
+      s.cborPack(it.v)
   else:
     s.packLen(val.len, CborMajor.Map)
     for k, v in val.pairs:
-      s.pack_type(k)
-      s.pack_type(v)
+      s.cborPack(k)
+      s.cborPack(v)
 
 
 # ---- Decoding helpers ----
@@ -428,7 +428,7 @@ proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
 
 # ---- Decoding for new types ----
 
-proc unpack_type*(s: Stream, val: var seq[byte]) =
+proc cborUnpack*(s: Stream, val: var seq[byte]) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Binary:
     raise newException(CborInvalidHeaderError, "expected binary string")
@@ -439,13 +439,13 @@ proc unpack_type*(s: Stream, val: var seq[byte]) =
     val[i] = uint8(ord(ch))
     inc i
 
-proc unpack_type*(s: Stream, val: var string) =
+proc cborUnpack*(s: Stream, val: var string) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.String:
     raise newException(CborInvalidHeaderError, "expected text string")
   val = s.readChunk(CborMajor.String, ai)
 
-proc unpack_type*[T](s: Stream, val: var seq[T]) =
+proc cborUnpack*[T](s: Stream, val: var seq[T]) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Array:
     raise newException(CborInvalidHeaderError, "expected array")
@@ -458,7 +458,7 @@ proc unpack_type*[T](s: Stream, val: var seq[T]) =
       if uint8(ord(b)) == 0xff'u8: break
       s.setPosition(pos)
       var item: T
-      s.unpack_type(item)
+      s.cborUnpack(item)
       val.add(item)
   else:
     let n = int(s.readAddInfo(ai))
@@ -466,12 +466,12 @@ proc unpack_type*[T](s: Stream, val: var seq[T]) =
     val.setLen(n)
     var i = 0
     while i < n:
-      s.unpack_type(val[i])
+      s.cborUnpack(val[i])
       inc i
 
 type SomeMap[K, V] = Table[K, V] | OrderedTable[K, V]
 
-proc unpack_type_impl*[K, V](s: Stream, val: var SomeMap[K, V]) =
+proc cborUnpackImpl*[K, V](s: Stream, val: var SomeMap[K, V]) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Map:
     raise newException(CborInvalidHeaderError, "expected map")
@@ -484,8 +484,8 @@ proc unpack_type_impl*[K, V](s: Stream, val: var SomeMap[K, V]) =
       s.setPosition(pos)
       var k: K
       var v: V
-      s.unpack_type(k)
-      s.unpack_type(v)
+      s.cborUnpack(k)
+      s.cborUnpack(v)
       val[k] = v
   else:
     let n = int(s.readAddInfo(ai))
@@ -494,13 +494,13 @@ proc unpack_type_impl*[K, V](s: Stream, val: var SomeMap[K, V]) =
     while i < n:
       var k: K
       var v: V
-      s.unpack_type(k)
-      s.unpack_type(v)
+      s.cborUnpack(k)
+      s.cborUnpack(v)
       val[k] = v
       inc i
 
-proc unpack_type*[K, V](s: Stream, val: var Table[K, V]) =
-  s.unpack_type_impl(val)
+proc cborUnpack*[K, V](s: Stream, val: var Table[K, V]) =
+  s.cborUnpackImpl(val)
 
-proc unpack_type*[K, V](s: Stream, val: var OrderedTable[K, V]) =
-  s.unpack_type_impl(val)
+proc cborUnpack*[K, V](s: Stream, val: var OrderedTable[K, V]) =
+  s.cborUnpackImpl(val)

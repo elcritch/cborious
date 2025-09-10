@@ -11,16 +11,16 @@ export stream, types, cbor
 
 proc packToString*[T](val: T): string =
   var s = CborStream.init(sizeof(T))
-  s.pack_type(val)
+  s.cborPack(val)
   result = move s.data
 
-proc unpack*[T](s: Stream, val: var T) = s.unpack_type(val)
+proc unpack*[T](s: Stream, val: var T) = s.cborUnpack(val)
 
 proc unpack*[T](s: Stream, val: typedesc[T]): T {.inline.} =
   unpack(s, result)
 
 # # Generic pack wrapper matching msgpack4nim patterns
-proc pack*[T](s: Stream, val: T) = s.pack_type(val)
+proc pack*[T](s: Stream, val: T) = s.cborPack(val)
 
 proc unpackFromString*[T](data: sink string, val: var T) =
   var s = CborStream.init(data)

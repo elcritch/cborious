@@ -18,8 +18,8 @@ const
 
 proc pack_tagged*[T](s: Stream, tag: CborTag, val: T) =
   ## Pack a value with a preceding tag.
-  s.pack_tag(tag)
-  s.pack_type(val)
+  s.cborPackTag(tag)
+  s.cborPack(val)
 
 proc readOneTag*(s: Stream, tagOut: var CborTag): bool =
   ## Reads a single tag if present, returns true and sets tagOut. Restores position when not a tag.
@@ -39,7 +39,7 @@ proc unpackExpectTag*[T](s: Stream, tag: CborTag, value: var T) =
   let t = s.readAddInfo(ai)
   if t != tag.uint64:
     raise newException(CborInvalidHeaderError, "unexpected tag value")
-  s.unpack_type(value)
+  s.cborUnpack(value)
 
 const datetimeFmt = "yyyy-MM-dd'T'HH:mm:sszzz"
 var assumeZone: Timezone = utc()
