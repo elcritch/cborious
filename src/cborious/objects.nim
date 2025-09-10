@@ -146,6 +146,7 @@ proc cborPackObjectMap[T](s: Stream, val: T) {.inline.} =
 
 proc cborPack*[T](s: Stream, val: T) =
   ## If a cborTag(T) is declared, serialize as tag(cborTag(T)) + cborPack(T).
+  mixin cborTag
   when compiles(cborTag(T)):
     s.cborPackTag(cborTag(T))
     s.cborPack(val)
@@ -236,6 +237,7 @@ proc cborUnpackObjectMap[T](s: Stream, val: var T) {.inline.} =
 
 proc cborUnpack*[T](s: Stream, val: var T) =
   ## If a cborTag(T) is declared, require and consume the tag before unpacking T.
+  mixin cborTag
   when compiles(cborTag(T)):
     s.unpackExpectTag(cborTag(T), val)
   else:
