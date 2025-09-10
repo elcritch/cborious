@@ -1,6 +1,5 @@
 import std/streams
 import std/endians
-import types
 
 export streams
 

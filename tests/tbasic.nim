@@ -42,7 +42,6 @@ suite "CBOR basics":
 
   test "canonical encodings bytes":
     # Selected spot checks to ensure minimal-length encodings
-    var buf = CborStream.init()
     checkPackToString(true, "\xf5")
     checkPackToString(false, "\xf4")
     checkPackToString(0'u8, "\x00")
@@ -85,29 +84,30 @@ suite "CBOR basics":
 
   test "canonical encodings at 16/32/64-bit boundaries":
     # Unsigned thresholds
-    check toCbor(65535)          == "\x19\xff\xff"
-    check toCbor(65536)          == "\x1a\x00\x01\x00\x00"
-    check toCbor(4294967295'i64) == "\x1a\xff\xff\xff\xff"
-    check toCbor(4294967296'i64) == "\x1b\x00\x00\x00\x01\x00\x00\x00\x00"
+    check toCbor(65535)           == "\x19\xff\xff"
+    check toCbor(65536)           == "\x1a\x00\x01\x00\x00"
+    check toCbor(4294967295'i64)  == "\x1a\xff\xff\xff\xff"
+    check toCbor(4294967296'i64)  == "\x1b\x00\x00\x00\x01\x00\x00\x00\x00"
     # # Negative thresholds (encode n where v = -(n+1))
-    check toCbor(-256)           == "\x38\xff"
-    check toCbor(-257)           == "\x39\x01\x00"
-    check toCbor(-65536)         == "\x39\xff\xff"
-    check toCbor(-65537)         == "\x3a\x00\x01\x00\x00"
-    check toCbor(-4294967296'i64)== "\x3a\xff\xff\xff\xff"
-    check toCbor(-4294967297'i64)== "\x3b\x00\x00\x00\x01\x00\x00\x00\x00"
+    check toCbor(-256)            == "\x38\xff"
+    check toCbor(-257)            == "\x39\x01\x00"
+    check toCbor(-65536)          == "\x39\xff\xff"
+    check toCbor(-65537)          == "\x3a\x00\x01\x00\x00"
+    check toCbor(-4294967296'i64) == "\x3a\xff\xff\xff\xff"
+    check toCbor(-4294967297'i64) == "\x3b\x00\x00\x00\x01\x00\x00\x00\x00"
 
-    check toCbor(-256)           == "\56\255"
-    check toCbor(-257)           == "\57\001\000"
-    check toCbor(-65536)         == "\57\255\255"
-    check toCbor(-65537)         == "\58\000\001\000\000"
-    check toCbor(-4294967296'i64)== "\58\255\255\255\255"
-    check toCbor(-4294967297'i64)== "\59\000\000\000\001\000\000\000\000"
+    check toCbor(-256)            == "\56\255"
+    check toCbor(-257)            == "\57\1\0"
+    check toCbor(-65536)          == "\57\255\255"
+    check toCbor(-65537)          == "\58\0\1\0\0"
+    check toCbor(-4294967296'i64) == "\58\255\255\255\255"
+    check toCbor(-4294967297'i64) == "\59\0\0\0\1\0\0\0\0"
 
     check toCbor(65535)          == "\25\255\255"
     check toCbor(65536)          == "\26\0\1\0\0"
     check toCbor(4294967295'i64) == "\26\255\255\255\255"
-    check toCbor(4294967296'i64) == "\27\000\000\000\001\000\000\000\000"
+    check toCbor(4294967296'i64) == "\27\0\0\0\1\0\0\0\0"
+
 
   test "text strings (canonical + roundtrip)":
     # Canonical encodings

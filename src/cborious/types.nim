@@ -1,9 +1,6 @@
 ## Core types and small utilities for CBORious
 ## Focused minimal surface for integers and booleans.
 
-import std/streams
-import ./stream
-
 type
   CborMajor* = enum
     Unsigned = 0
@@ -27,10 +24,9 @@ type
 const
   AiIndef* = 31'u8
 
-proc `==`(a: CborTag, b: CborTag): bool =
-  a.uint64 == b.uint64
+proc `==`*(a: CborTag, b: CborTag): bool {.borrow.}
 
-proc `$`(a: CborTag): string =
+proc `$`*(a: CborTag): string =
   "Tag(" & $a.uint64 & ")"
 
 proc majorToPrefix*(major: CborMajor): int =

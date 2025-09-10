@@ -1,5 +1,4 @@
 import std/times
-import std/strutils
 import ./types
 import ./stream
 import ./cbor

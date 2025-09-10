@@ -189,13 +189,6 @@ proc cborUnpackObjectMap[T](s: Stream, val: var T) {.inline.} =
   if major != CborMajor.Map:
     raise newException(CborInvalidHeaderError, "expected map for object/tuple")
   # Build name->field setter closures via iteration over fields
-  template assignField(name: string) =
-    var i = 0
-    for k, v in fieldPairs(val):
-      if k == name:
-        s.cborUnpack undistinctUnpack(v)
-        break
-      inc i
   if ai == AiIndef:
     while true:
       let pos = s.getPosition()
