@@ -577,3 +577,16 @@ proc skipCborMsg*(s: Stream) =
       raise newException(CborInvalidHeaderError, "unexpected break code outside indefinite")
     else:
       discard
+
+
+# ---- Enums ----
+
+proc cborPack*[T: enum](s: Stream, val: T) =
+  ## Pack Nim enums as their ordinal value using minimal CBOR integer.
+  s.cborPack(int64(ord(val)))
+
+proc cborUnpack*[T: enum](s: Stream, val: var T) =
+  ## Unpack a CBOR integer into a Nim enum by ordinal.
+  var x: int64
+  s.cborUnpack(x)
+  val = T(int(x))

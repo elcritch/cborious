@@ -6,14 +6,14 @@ export streams
 
 type
   EncodingMode* = enum
-    CBOR_OBJ_TO_DEFAULT
     CBOR_OBJ_TO_ARRAY
     CBOR_OBJ_TO_MAP
     CBOR_OBJ_TO_STREAM
+    CBOR_CONONICAL
+    CBOR_ENUM_AS_STRINGS
 
   CborStream* = ref object of StringStreamObj
-    encodingMode: EncodingMode
-    canonicalMode: bool
+    encodingMode: set[EncodingMode]
 
 {.push gcsafe.}
 
@@ -72,8 +72,7 @@ proc init*(x: typedesc[CborStream], data: sink string): CborStream =
     result.readDataImpl = ss.readDataImpl
     result.peekDataImpl = ss.peekDataImpl
     result.writeDataImpl = ss.writeDataImpl
-  result.encodingMode = CBOR_OBJ_TO_DEFAULT
-  result.canonicalMode = true
+  result.encodingMode = {CBOR_OBJ_TO_ARRAY, }
 
 proc init*(x: typedesc[CborStream], cap: int = 0): CborStream =
   ## Initialize a CborStream with capacity.
@@ -89,14 +88,5 @@ proc readExactStr*(s: Stream, length: int, str: var string) =
   readStr(s, length, str)
   if str.len != length: raise newException(IOError, "string len mismatch")
 
-proc setEncodingMode*(s: CborStream, mode: EncodingMode) =
-  s.encodingMode = mode
-
-proc getEncodingMode*(s: CborStream): EncodingMode =
+proc encodingMode*(s: CborStream): var set[EncodingMode] =
   s.encodingMode
-
-proc setCanonicalMode*(s: CborStream, mode: bool) =
-  s.canonicalMode = mode
-
-proc getCanonicalMode*(s: CborStream): bool =
-  s.canonicalMode

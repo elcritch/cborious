@@ -379,3 +379,23 @@ suite "CBOR basics":
     s2.setPosition(0)
     skipCborMsg(s2)
     check unpack(s2, int) == 1
+
+  test "enums (canonical + roundtrip)":
+    type Status = enum
+      stOk = 0
+      stWarn = 1
+      stErr = 10
+      stCrit # 11
+
+    # Canonical bytes
+    check toCbor(stOk)   == "\x00"
+    check toCbor(stWarn) == "\x01"
+    check toCbor(stErr)  == "\x0a"
+    check toCbor(stCrit) == "\x0b"
+
+    # Roundtrip
+    var s = CborStream.init()
+    pack(s, stErr)
+    s.setPosition(0)
+    let d = unpack(s, Status)
+    check d == stErr
