@@ -1,5 +1,6 @@
 import std/strutils
 import std/unicode
+import std/math
 import std/base64
 import ./types
 import ./stream
@@ -175,6 +176,9 @@ proc parseByteStringLiteral(p: var Parser, kind: string): seq[uint8] =
       if bits >= 8:
         bits -= 8
         result.add(uint8((acc shr bits) and 0xff))
+        # keep only the remaining lower 'bits' bits in accumulator
+        if bits > 0:
+          acc = acc and ((1 shl bits) - 1)
     discard
   else:
     raise newException(EdnError, "unknown bytes literal kind")
@@ -269,6 +273,29 @@ proc parseValue(p: var Parser, s: Stream) =
       raise newException(EdnError, "unknown b* bytes literal")
   of '-', '0'..'9':
     var isF: bool; var fv: float64; var iv: int64
+    # Check for tag-number syntax: <digits> '(' value ')'
+    if c != '-' and p.peek().isDigit():
+      var j = p.i
+      var t: uint64 = 0
+      while j < p.s.len and p.s[j].isDigit():
+        t = t * 10 + uint64(ord(p.s[j]) - ord('0'))
+        inc j
+      var k = j
+      # allow whitespace between number and '('
+      while k < p.s.len and isSpace(p.s[k]): inc k
+      if k < p.s.len and p.s[k] == '(':
+        # consume up to '(' and parse as tag
+        p.i = k
+        p.parseTag(s, t)
+        return
+    # Special-case -Infinity token to avoid treating as a number
+    if c == '-' and not p.atEnd():
+      let rest = p.s.substr(p.i, min(p.i + 8, p.s.high))
+      if rest == "-Infinity":
+        # consume token
+        inc p.i, 9 # length of "-Infinity"
+        s.cborPack(NegInf)
+        return
     p.parseNumber(isF, fv, iv)
     if isF: s.cborPack(fv) else: s.cborPack(iv)
   else:
