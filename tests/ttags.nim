@@ -29,9 +29,9 @@ suite "CBOR tags & timestamps":
     var s = CborStream.init()
     let dts = "2013-03-21T20:04:00Z"
     var dt: DateTime = parse(dts, "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    let x = toCbor(dt)
     s.cborPack(dt)
     # C0 (tag 0), then length-prefixed string
+    let x = toCbor(dts)
     check s.data.repr() == repr("\xC0" & x)
     # Unpack as string should ignore tag
     s.setPosition(0)
