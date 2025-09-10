@@ -421,27 +421,27 @@ suite "sets (canonical + roundtrip)":
     strm.cborUnpack(d0)
     check d0 == {stOk, stErr, stCrit}
 
-  # test "sets toCbor and fromCbor":
-  #   var s0: set[Status] = {}
-  #   # empty set encodes as empty array
-  #   check toCbor(s0) == "\x80"
+  test "sets toCbor and fromCbor":
+    var s0: set[Status] = {}
+    # empty set encodes as empty array
+    check toCbor(s0) == "\x80"
 
-  #   var s1: set[Status] = {stOk}
-  #   # array(1) + 0
-  #   check toCbor(s1) == "\x81\x00"
-  #   let d1 = fromCbor(toCbor(s1), set[Status])
-  #   check d1 == s1
+    var s1: set[Status] = {stOk}
+    # array(1) + 0
+    check toCbor(s1) == "\x81\x00"
+    let d1 = fromCbor(toCbor(s1), set[Status])
+    check d1 == s1
 
-  # test "sets toCbor and fromCbor":
-  #   var s2: set[Status] = {stCrit, stOk}
-  #   # canonical ascending ordinals: [0, 11]
-  #   check toCbor(s2) == "\x82\x00\x0b"
-  #   let d2 = fromCbor(toCbor(s2), set[Status])
-  #   check d2 == s2
+  test "sets toCbor and fromCbor":
+    var s2: set[Status] = {stCrit, stOk}
+    # canonical ascending ordinals: [0, 11]
+    check toCbor(s2) == "\x82\x00\x0b"
+    let d2 = fromCbor(toCbor(s2), set[Status])
+    check d2 == s2
 
-  # test "sets toCbor and fromCbor":
-  #   var s3: set[Status] = {stWarn, stErr, stCrit}
-  #   # [1, 10, 11] -> 0x83 0x01 0x0a 0x0b
-  #   check toCbor(s3) == "\x83\x01\x0a\x0b"
-  #   let d3 = fromCbor(toCbor(s3), set[Status])
-  #   check d3 == s3
+  test "sets toCbor and fromCbor":
+    var s3: set[Status] = {stWarn, stErr, stCrit}
+    # [1, 10, 11] -> 0x83 0x01 0x0a 0x0b
+    check toCbor(s3) == "\x83\x01\x0a\x0b"
+    let d3 = fromCbor(toCbor(s3), set[Status])
+    check d3 == s3
