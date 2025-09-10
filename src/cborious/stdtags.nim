@@ -4,6 +4,8 @@ import ./types
 import ./stream
 import ./cbor
 
+export times
+
 # CBOR Tag helpers with opt-in tagging via cborTag(T)
 
 const

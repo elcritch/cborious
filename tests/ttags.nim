@@ -2,6 +2,7 @@ import unittest
 import std/times
 import std/strutils
 import cborious
+import cborious/stdtags
 
 type Foo = object
     bar: int
@@ -17,7 +18,6 @@ type Person = object
 proc cborTag(tp: typedesc[Person]): CborTag =
     result = 29.CborTag
 
-
 suite "CBOR tags & timestamps":
   test "test cborPackTag":
     var cc = CborStream.init()
@@ -25,17 +25,18 @@ suite "CBOR tags & timestamps":
     cc.cborPack("2013-03-21T20:04:00Z")
     check cc.data.repr() == repr("\192\x742013-03-21T20:04:00Z")
 
-  # test "tag 0: string roundtrip & generic skip":
-  #   var s = CborStream.init()
-  #   var dt: DateTime = parse("2013-03-21T20:04:00Z", "yyyy-MM-dd'T'HH:mm:ss'Z'")
-  #   s.cborPack(dt)
-  #   static: echo "CHECK: IS DT OBJECT: ", dt is object
-  #   # C0 (tag 0), then length-prefixed string
-  #   check s.data.repr() == repr("\xC0\x742013-03-21T20:04:00Z")
-  #   # Unpack as string should ignore tag
-  #   s.setPosition(0)
-  #   let txt = unpack(s, DateTime)
-  #   check txt == dt
+  test "tag 0: string roundtrip & generic skip":
+    var s = CborStream.init()
+    let dts = "2013-03-21T20:04:00Z"
+    var dt: DateTime = parse(dts, "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    let x = toCbor(dt)
+    s.cborPack(dt)
+    # C0 (tag 0), then length-prefixed string
+    check s.data.repr() == repr("\xC0" & x)
+    # Unpack as string should ignore tag
+    s.setPosition(0)
+    let txt = unpack(s, DateTime)
+    check txt == dt
 
   test "tag 3: foo roundtrip & generic skip":
     let x = toCbor((bar: 3))
