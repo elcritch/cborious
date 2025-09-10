@@ -295,11 +295,19 @@ suite "CBOR basics":
       check d == v
 
   test "canonical encodings floats":
-    # float32 1.5 -> 0xfa 3f c0 00 00
-    checkPackToString(1.5'f32, "\xfa\x3f\xc0\x00\x00")
-    # float32 -0.0 -> 0xfa 80 00 00 00
-    checkPackToString(-0.0'f32, "\xfa\x80\x00\x00\x00")
-    # float64 1.5 -> 0xfb 3f f8 00 00 00 00 00 00
-    checkPackToString(1.5, "\xfb\x3f\xf8\x00\x00\x00\x00\x00\x00")
-    # float64 -0.0 -> 0xfb 80 00 00 00 00 00 00 00
-    checkPackToString(-0.0, "\xfb\x80\x00\x00\x00\x00\x00\x00\x00")
+    # 1.5 is exactly representable as half: 0xf9 3e 00
+    checkPackToString(1.5'f32, "\xf9\x3e\x00")
+    checkPackToString(1.5,     "\xf9\x3e\x00")
+    # -0.0 encodes as half with sign
+    checkPackToString(-0.0'f32, "\xf9\x80\x00")
+    checkPackToString(-0.0,     "\xf9\x80\x00")
+    # Infinities encode as half
+    checkPackToString(Inf,    "\xf9\x7c\x00")
+    checkPackToString(NegInf, "\xf9\xfc\x00")
+    # NaN encodes as canonical half NaN 0x7e00
+    block:
+      var n = NaN
+      checkPackToString(n, "\xf9\x7e\x00")
+    block:
+      var n32 = float32(NaN)
+      checkPackToString(n32, "\xf9\x7e\x00")

@@ -54,17 +54,100 @@ template writeFloatHeader(s: Stream, ai: uint8) =
   ## Writes the initial byte for a floating-point number.
   s.writeInitial(CborMajor.Simple, ai)
 
+proc halfToFloat32(bits: uint16): float32 =
+  ## Convert IEEE-754 half-precision to float32.
+  let sgn = (bits shr 15) and 0x1'u16
+  let e = (bits shr 10) and 0x1F'u16
+  let f = bits and 0x3FF'u16
+  if e == 0x1F'u16:
+    # Inf / NaN
+    let sign = uint32(sgn) shl 31
+    let frac32 = uint32(f) shl 13
+    let exp32 = 0xFF'u32 shl 23
+    return cast[float32](sign or exp32 or frac32)
+  elif e == 0'u16:
+    if f == 0'u16:
+      # signed zero
+      let sign = uint32(sgn) shl 31
+      return cast[float32](sign)
+    else:
+      # subnormal: value = (-1)^s * f * 2^-24
+      let signMul = (if sgn == 0'u16: 1.0'f32 else: -1.0'f32)
+      return signMul * float32(f) * (1.0'f32 / float32(1 shl 24))
+  else:
+    # normal number
+    let sign = uint32(sgn) shl 31
+    let exp32 = uint32(uint16(e + 112'u16)) shl 23 # 127-15 = 112 bias delta
+    let frac32 = uint32(f) shl 13
+    return cast[float32](sign or exp32 or frac32)
+
+proc float32ToHalfBits(v: float32): uint16 =
+  ## Convert float32 to IEEE-754 half with round-to-nearest-even.
+  let x = cast[uint32](v)
+  let sign = (x shr 16) and 0x8000'u32
+  let mant = x and 0x7fffff'u32
+  let exp = (x shr 23) and 0xff'u32
+  if exp == 0xff'u32: # NaN/Inf
+    if mant == 0'u32: return uint16(sign or 0x7c00'u32) # Inf
+    return uint16(sign or 0x7e00'u32) # qNaN canonical
+  var e = int32(exp) - 127 + 15
+  if e >= 31:
+    return uint16(sign or 0x7c00'u32) # overflow -> Inf
+  if e <= 0:
+    if e < -10: return uint16(sign) # underflow -> zero
+    var m = mant or 0x800000'u32
+    let shift = uint32(14 - e)
+    var mant2 = m shr (shift - 1)
+    mant2 = mant2 + (mant2 and 1'u32) # round to even
+    return uint16(sign or (mant2 shr 1))
+  var mant2 = mant + 0x1000'u32 # add rounding bias
+  if (mant2 and 0x800000'u32) != 0'u32:
+    mant2 = 0
+    inc e
+  if e >= 31: return uint16(sign or 0x7c00'u32)
+  return uint16(sign or (uint32(e) shl 10) or (mant2 shr 13))
+
 proc pack_type*(s: Stream, val: float32) =
-  ## Encode IEEE-754 single-precision (32-bit) float
-  s.writeFloatHeader(26'u8) # additional info 26 for 32-bit float
-  let bits = cast[uint32](val)
-  s.store32(bits)
+  ## Encode using minimal-size canonical: try half, else single.
+  if isNaN(val):
+    s.writeFloatHeader(25'u8)
+    s.store16(0x7e00'u16)
+    return
+  if val == Inf or val == NegInf:
+    s.writeFloatHeader(25'u8)
+    s.store16(if val == NegInf: 0xfc00'u16 else: 0x7c00'u16)
+    return
+  let h = float32ToHalfBits(val)
+  let back = halfToFloat32(h)
+  if back == val:
+    s.writeFloatHeader(25'u8)
+    s.store16(h)
+  else:
+    s.writeFloatHeader(26'u8)
+    s.store32(cast[uint32](val))
 
 proc pack_type*(s: Stream, val: float64) =
-  ## Encode IEEE-754 double-precision (64-bit) float
-  s.writeFloatHeader(27'u8) # additional info 27 for 64-bit float
-  let bits = cast[uint64](val)
-  s.store64(bits)
+  ## Encode using minimal-size canonical: try half, then single, else double.
+  if isNaN(val):
+    s.writeFloatHeader(25'u8)
+    s.store16(0x7e00'u16)
+    return
+  if val == Inf or val == NegInf:
+    s.writeFloatHeader(25'u8)
+    s.store16(if val == NegInf: 0xfc00'u16 else: 0x7c00'u16)
+    return
+  let v32 = float32(val)
+  if float64(v32) == val:
+    let h = float32ToHalfBits(v32)
+    if float64(halfToFloat32(h)) == val:
+      s.writeFloatHeader(25'u8)
+      s.store16(h)
+    else:
+      s.writeFloatHeader(26'u8)
+      s.store32(cast[uint32](v32))
+  else:
+    s.writeFloatHeader(27'u8)
+    s.store64(cast[uint64](val))
 
 
 
@@ -168,32 +251,7 @@ proc unpack_type*(s: Stream, val: var int) =
 
 # ---- Float decoding ----
 
-proc halfToFloat32(bits: uint16): float32 =
-  ## Convert IEEE-754 half-precision to float32.
-  let s = (bits shr 15) and 0x1'u16
-  let e = (bits shr 10) and 0x1F'u16
-  let f = bits and 0x3FF'u16
-  if e == 0x1F'u16:
-    # Inf / NaN
-    let sign = uint32(s) shl 31
-    let frac32 = uint32(f) shl 13
-    let exp32 = 0xFF'u32 shl 23
-    return cast[float32](sign or exp32 or frac32)
-  elif e == 0'u16:
-    if f == 0'u16:
-      # signed zero
-      let sign = uint32(s) shl 31
-      return cast[float32](sign)
-    else:
-      # subnormal: value = (-1)^s * f * 2^-24
-      let signMul = (if s == 0'u16: 1.0'f32 else: -1.0'f32)
-      return signMul * float32(f) * (1.0'f32 / float32(1 shl 24))
-  else:
-    # normal number
-    let sign = uint32(s) shl 31
-    let exp32 = uint32(uint16(e + 112'u16)) shl 23 # 127-15 = 112 bias delta
-    let frac32 = uint32(f) shl 13
-    return cast[float32](sign or exp32 or frac32)
+ 
 
 proc unpack_type*(s: Stream, val: var float32) =
   let (major, ai) = s.readInitialSkippingTags()
