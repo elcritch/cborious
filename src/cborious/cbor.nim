@@ -590,3 +590,40 @@ proc cborUnpack*[T: enum](s: Stream, val: var T) =
   var x: int64
   s.cborUnpack(x)
   val = T(int(x))
+
+
+# ---- Sets ----
+
+proc cborPack*[T](s: Stream, val: set[T]) =
+  ## Encode Nim sets as CBOR arrays of elements in ascending order.
+  var count = 0
+  for x in items(T):
+    if x in val: inc count
+  s.packLen(count, CborMajor.Array)
+  for x in low(T)..high(T):
+    if x in val:
+      s.cborPack(x)
+
+proc cborUnpack*[T](s: Stream, val: var set[T]) =
+  ## Decode a CBOR array into a Nim set by including each element.
+  let (major, ai) = s.readInitialSkippingTags()
+  if major != CborMajor.Array:
+    raise newException(CborInvalidHeaderError, "expected array for set")
+  val = {} # clear
+  if ai == AiIndef:
+    while true:
+      let pos = s.getPosition()
+      let b = s.readChar()
+      if uint8(ord(b)) == 0xff'u8: break
+      s.setPosition(pos)
+      var x: T
+      s.cborUnpack(x)
+      val.incl(x)
+  else:
+    let n = int(s.readAddInfo(ai))
+    var i = 0
+    while i < n:
+      var x: T
+      s.cborUnpack(x)
+      val.incl(x)
+      inc i
