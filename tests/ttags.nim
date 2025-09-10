@@ -18,10 +18,11 @@ suite "CBOR tags & timestamps":
 
   test "tag 0: string roundtrip & generic skip":
     var s = CborStream.init()
-    s.cborPack("2013-03-21T20:04:00Z")
+    let dt = parse("2013-03-21T20:04:00Z", "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    s.cborPack(dt)
     # C0 (tag 0), then length-prefixed string
     checkPackToString(s, "\xC0\x742013-03-21T20:04:00Z")
     # Unpack as string should ignore tag
     s.setPosition(0)
-    let txt = unpack(s, string)
-    check txt == "2013-03-21T20:04:00Z"
+    let txt = unpack(s, DateTime)
+    check txt == dt
