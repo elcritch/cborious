@@ -581,6 +581,9 @@ proc skipCborMsg*(s: Stream) =
 
 # ---- Enums ----
 
+proc toEnum*[T: enum](val: SomeInteger): T =
+  T(val)
+
 proc cborPack*[T: enum](s: Stream, val: T) =
   ## Pack Nim enums; optionally as string when CborEnumAsString is enabled.
   if s of CborStream and CborEnumAsString in CborStream(s).encodingMode:
@@ -601,7 +604,7 @@ proc cborUnpack*[T: enum](s: Stream, val: var T) =
     var i = int(ord(low(T)))
     let hi = int(ord(high(T)))
     while i <= hi:
-      let e = T(i)
+      let e = toEnum[T](i)
       if $e == name:
         val = e
         found = true
@@ -621,7 +624,7 @@ proc cborUnpack*[T: enum](s: Stream, val: var T) =
         tmp = - (int64(n) + 1'i64)
       else:
         tmp = int64(n)
-    val = T(int(tmp))
+    val = toEnum[T](tmp)
   else:
     raise newException(CborInvalidHeaderError, "expected enum encoded as int or string")
 
