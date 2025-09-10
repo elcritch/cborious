@@ -46,11 +46,15 @@ suite "CBOR tags & timestamps":
     s.cborPack(p)
     check s.data.repr() == repr("\xC3" & x)
 
+    s.setPosition(0)
+    let pp = unpack(s, Foo)
+    check pp == p
+
   test "tag 29: person roundtrip & generic skip":
     var s = CborStream.init()
     var p = Person(name: "Ann", age: 30, active: true)
     s.cborPack(p)
     check s.data.repr() == repr("\216\29" & "\x83\x63Ann\x18\x1e\xf5")
-    # s.setPosition(0)
-    # let pp = unpack(s, Person)
-    # check pp == p
+    s.setPosition(0)
+    let pp = unpack(s, Person)
+    check pp == p
