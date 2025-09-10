@@ -582,14 +582,48 @@ proc skipCborMsg*(s: Stream) =
 # ---- Enums ----
 
 proc cborPack*[T: enum](s: Stream, val: T) =
-  ## Pack Nim enums as their ordinal value using minimal CBOR integer.
-  s.cborPack(int64(ord(val)))
+  ## Pack Nim enums; optionally as string when CborEnumAsString is enabled.
+  if s of CborStream and CborEnumAsString in CborStream(s).encodingMode:
+    s.cborPack($val)
+  else:
+    s.cborPack(int64(ord(val)))
 
 proc cborUnpack*[T: enum](s: Stream, val: var T) =
-  ## Unpack a CBOR integer into a Nim enum by ordinal.
-  var x: int64
-  s.cborUnpack(x)
-  val = T(int(x))
+  ## Unpack a Nim enum from either integer (ordinal) or text (name).
+  let (major, ai) = s.readInitialSkippingTags()
+  case major
+  of CborMajor.String:
+    var name: string
+    # We've already consumed the initial, so read the rest of the string
+    # by delegating to readChunk.
+    name = s.readChunk(CborMajor.String, ai)
+    var found = false
+    var i = int(ord(low(T)))
+    let hi = int(ord(high(T)))
+    while i <= hi:
+      let e = T(i)
+      if $e == name:
+        val = e
+        found = true
+        break
+      inc i
+    if not found:
+      raise newException(CborInvalidHeaderError, "unknown enum name: " & name)
+  of CborMajor.Unsigned, CborMajor.Negative:
+    var tmp: int64
+    # Re-interpret the current major/ai as integer additional info
+    # We already consumed the initial byte above, so read the add-info value.
+    block:
+      var n = s.readAddInfo(ai)
+      if major == CborMajor.Negative:
+        if n == uint64(high(uint64)):
+          raise newException(CborOverflowError, "negative integer overflow")
+        tmp = - (int64(n) + 1'i64)
+      else:
+        tmp = int64(n)
+    val = T(int(tmp))
+  else:
+    raise newException(CborInvalidHeaderError, "expected enum encoded as int or string")
 
 
 # ---- Sets ----

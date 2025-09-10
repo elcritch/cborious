@@ -400,6 +400,26 @@ suite "CBOR basics":
     let d = unpack(s, Status)
     check d == stErr
 
+  test "enums as string (pack + unpack)":
+    type Status2 = enum
+      s2Ok
+      s2Warn
+      s2Error
+    # toCbor with enum-as-string encoding
+    let enc = toCbor(s2Warn, {CborEnumAsString})
+    check enc == "\x66s2Warn"
+    # fromCbor accepts string encoding regardless of encoding mode
+    let dec = fromCbor(enc, Status2)
+    check dec == s2Warn
+    # Pack via stream with enum-as-string enabled
+    var cs = CborStream.init()
+    cs.encodingMode = {CborEnumAsString}
+    pack(cs, s2Error)
+    check cs.data == "\x67s2Error"
+    cs.setPosition(0)
+    let d2 = unpack(cs, Status2)
+    check d2 == s2Error
+
 suite "sets (canonical + roundtrip)":
   type Status = enum
     stOk
