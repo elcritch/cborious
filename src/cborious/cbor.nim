@@ -285,7 +285,7 @@ proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
 
 # ---- Decoding for new types ----
 
-proc unpack_type*(s: Stream, val: var seq[uint8]) =
+proc unpack_type*(s: Stream, val: var seq[byte]) =
   let (major, ai) = s.readInitialSkippingTags()
   if major != CborMajor.Binary:
     raise newException(CborInvalidHeaderError, "expected binary string")
