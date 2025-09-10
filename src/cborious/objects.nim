@@ -91,7 +91,7 @@ proc readOneTag*(s: Stream, tagOut: var CborTag): bool =
   s.setPosition(pos)
   return false
 
-proc unpackExpectTag*[T](s: Stream, tag: CborTag, value: var T) =
+proc cborExpectTag*(s: Stream, tag: CborTag) =
   ## Requires the next item to be a tag with the specified id, then unpacks a value of type T.
   let (m, ai) = s.readInitial()
   if m != CborMajor.Tag:
@@ -99,7 +99,6 @@ proc unpackExpectTag*[T](s: Stream, tag: CborTag, value: var T) =
   let t = s.readAddInfo(ai)
   if t != tag.uint64:
     raise newException(CborInvalidHeaderError, "unexpected tag value")
-  s.cborUnpack(value)
 # ---- Object and tuple encoding/decoding ----
 
 template hasMode(s: Stream, m: EncodingMode): bool =
@@ -236,9 +235,8 @@ proc cborUnpack*[T](s: Stream, val: var T) =
   ## If a cborTag(T) is declared, require and consume the tag before unpacking T.
   mixin cborTag
   when compiles(cborTag(T)):
-    s.unpackExpectTag(cborTag(T), val)
-  else:
-    s.cborUnpack(val)
+    s.cborExpectTag(cborTag(T))
+  s.cborUnpack(val)
 
 proc cborUnpack*[T: tuple|object](s: Stream, val: var T) =
   let pos = s.getPosition()
