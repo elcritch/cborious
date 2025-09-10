@@ -135,8 +135,9 @@ proc ednText(s: Stream, ai: uint8): string =
 
 proc ednFloatSimple(s: Stream, ai: uint8): string =
   case ai
-  of 20'u8: return "true"
-  of 21'u8: return "false"
+  # CBOR simple values: 20=false, 21=true
+  of 20'u8: return "false"
+  of 21'u8: return "true"
   of 22'u8: return "null"
   of 23'u8: return "undefined"
   of 24'u8:

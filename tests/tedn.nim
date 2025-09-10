@@ -19,7 +19,7 @@ suite "EDN pretty printer":
 
   test "booleans and null/undefined":
     check EDNof(true) == "true"
-    check EDNof(false) == "alse"
+    check EDNof(false) == "false"
     block:
       var s = CborStream.init()
       s.cborPackNull()
