@@ -1,4 +1,5 @@
 import std/math
+import ./utils
 import ./types
 import ./stream
 import ./cbor
@@ -142,28 +143,6 @@ proc ednFloatSimple(s: Stream, ai: uint8): string =
     let v = uint8(s.readChar())
     return "simple(" & $v & ")"
   of 25'u8:
-    # half-precision -> float32 for printing
-    proc halfToFloat32(bits: uint16): float32 =
-      let sgn = (bits shr 15) and 0x1'u16
-      let e = (bits shr 10) and 0x1F'u16
-      let f = bits and 0x3FF'u16
-      if e == 0x1F'u16:
-        let sign = uint32(sgn) shl 31
-        let frac32 = uint32(f) shl 13
-        let exp32 = 0xFF'u32 shl 23
-        return cast[float32](sign or exp32 or frac32)
-      elif e == 0'u16:
-        if f == 0'u16:
-          let sign = uint32(sgn) shl 31
-          return cast[float32](sign)
-        else:
-          let signMul = (if sgn == 0'u16: 1.0'f32 else: -1.0'f32)
-          return signMul * float32(f) * (1.0'f32 / float32(1 shl 24))
-      else:
-        let sign = uint32(sgn) shl 31
-        let exp32 = uint32(uint16(e + 112'u16)) shl 23
-        let frac32 = uint32(f) shl 13
-        return cast[float32](sign or exp32 or frac32)
     let bits = s.unstore16()
     let f = halfToFloat32(bits)
     if isNaN(f): return "NaN"
