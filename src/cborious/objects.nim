@@ -149,20 +149,18 @@ proc cborPack*[T: tuple|object](s: Stream, val: T) =
   static: echo "cborPack: OBJECTS: ", $T
   static: echo "cborPack: cborTag: " & $compiles(cborTag(T))
   when compiles(cborTag(T) is CborTag):
-    static: echo "cborPack: cborTag(T): " & $cborTag(T)
     s.cborPackTag(cborTag(T))
-    s.cborPack(val)
+
+  if s.hasMode(CborObjToMap):
+    s.cborPackObjectMap(val)
+  elif s.hasMode(CborObjToArray):
+    s.cborPackObjectArray(val)
+  elif s.hasMode(CborObjToStream):
+    for field in fields(val):
+      s.cborPack undistinctPack(field)
   else:
-    if s.hasMode(CborObjToMap):
-      s.cborPackObjectMap(val)
-    elif s.hasMode(CborObjToArray):
-      s.cborPackObjectArray(val)
-    elif s.hasMode(CborObjToStream):
-      for field in fields(val):
-        s.cborPack undistinctPack(field)
-    else:
-      # default to array for non-CborStream
-      s.cborPackObjectArray(val)
+    # default to array for non-CborStream
+    s.cborPackObjectArray(val)
 
 proc cborUnpackObjectArray[T](s: Stream, val: var T) {.inline.} =
   let (major, ai) = s.readInitialSkippingTags()
