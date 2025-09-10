@@ -20,6 +20,18 @@ suite "CBOR objects/tuples":
     let d = unpack(s, Person)
     check d == p
 
+  test "pack object as array (canonical bytes + roundtrip)":
+    let p = Person(name: "Ann", age: 30, active: true)
+    # 83, 63 'A''n''n', 18 1e, f5
+    var s = CborStream.init()
+    s.encodingMode = {CborObjToArray, CborCanonical}
+    s.cborPack(p)
+    check s.data.repr() == "\x83\x63Ann\x18\x1e\xf5".repr()
+    s.setPosition(0)
+    var d: Person
+    s.cborUnpack(d)
+    check d == p
+
   test "object as map (canonical order)":
     let p = Person(name: "Ann", age: 30, active: true)
     let enc = toCbor(p, {CborObjToMap, CborCanonical})

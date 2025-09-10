@@ -144,26 +144,25 @@ proc cborPackObjectMap[T](s: Stream, val: T) {.inline.} =
     s.cborPack(k)
     s.cborPack undistinctPack(v)
 
-proc cborPack*[T](s: Stream, val: T) =
-  ## If a cborTag(T) is declared, serialize as tag(cborTag(T)) + cborPack(T).
+proc cborPack*[T: tuple|object](s: Stream, val: T) =
   mixin cborTag
+  static: echo "cborPack: OBJECTS"
+  static: echo "cborPack: cborTag: " & $compiles(cborTag(T))
   when compiles(cborTag(T)):
+    static: echo "cborPack: cborTag(T): " & $cborTag(T)
     s.cborPackTag(cborTag(T))
     s.cborPack(val)
   else:
-    s.cborPack(val)
-
-proc cborPack*[T: tuple|object](s: Stream, val: T) =
-  if s.hasMode(CborObjToMap):
-    s.cborPackObjectMap(val)
-  elif s.hasMode(CborObjToArray):
-    s.cborPackObjectArray(val)
-  elif s.hasMode(CborObjToStream):
-    for field in fields(val):
-      s.cborPack undistinctPack(field)
-  else:
-    # default to array for non-CborStream
-    s.cborPackObjectArray(val)
+    if s.hasMode(CborObjToMap):
+      s.cborPackObjectMap(val)
+    elif s.hasMode(CborObjToArray):
+      s.cborPackObjectArray(val)
+    elif s.hasMode(CborObjToStream):
+      for field in fields(val):
+        s.cborPack undistinctPack(field)
+    else:
+      # default to array for non-CborStream
+      s.cborPackObjectArray(val)
 
 proc cborUnpackObjectArray[T](s: Stream, val: var T) {.inline.} =
   let (major, ai) = s.readInitialSkippingTags()
