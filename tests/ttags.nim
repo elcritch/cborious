@@ -3,6 +3,7 @@ import std/times
 import std/strutils
 import cborious
 import cborious/objects
+import cborious/stdtags
 
 template checkPackToString(v: CborStream, expected: string) =
   echo "checking " & $v.data.repr() & " (" & $typeof(v.data) & ")" & " to " & expected.repr()
