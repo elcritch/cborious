@@ -241,7 +241,7 @@ suite "CBOR basics":
       ot2["aa"] = 1
       ot2["b"] = 2
       var s2 = CborStream.init()
-      s2.encodingMode().excl(CBOR_CONONICAL)
+      s2.encodingMode().excl(CborCanonical)
       pack(s2, ot2)
       let enc = s2.data
       # Expect order: 'aa' then 'b'
@@ -262,7 +262,7 @@ suite "CBOR basics":
       t2[10] = "x"
       t2[1] = "y"
       # Expect: A2, 01, 61 'y', 0A, 61 'x'
-      check toCbor(t2, {CBOR_CONONICAL}) == "\xa2\x01\x61y\x0a\x61x"
+      check toCbor(t2, {CborCanonical}) == "\xa2\x01\x61y\x0a\x61x"
 
   test "roundtrip float64":
     var buf = CborStream.init()

@@ -6,11 +6,11 @@ export streams
 
 type
   EncodingMode* = enum
-    CBOR_OBJ_TO_ARRAY
-    CBOR_OBJ_TO_MAP
-    CBOR_OBJ_TO_STREAM
-    CBOR_CONONICAL
-    CBOR_ENUM_AS_STRINGS
+    CborObjToArray
+    CborObjToMap
+    CborObjToStream
+    CborCanonical
+    CborEnumAsString
 
   CborStream* = ref object of StringStreamObj
     encodingMode: set[EncodingMode]
