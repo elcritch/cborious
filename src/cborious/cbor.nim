@@ -596,11 +596,9 @@ proc cborUnpack*[T: enum](s: Stream, val: var T) =
 
 proc cborPack*[T](s: Stream, val: set[T]) =
   ## Encode Nim sets as CBOR arrays of elements in ascending order.
-  var count = 0
-  for x in items(T):
-    if x in val: inc count
+  let count = val.card()
   s.packLen(count, CborMajor.Array)
-  for x in low(T)..high(T):
+  for x in items(val):
     if x in val:
       s.cborPack(x)
 

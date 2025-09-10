@@ -421,6 +421,14 @@ suite "sets (canonical + roundtrip)":
     strm.cborUnpack(d0)
     check d0 == {stOk, stErr, stCrit}
 
+  test "holy sets cborPack and unpackCbor":
+    var strm = CborStream.init()
+    strm.cborPack({shOk, shErr, shCrit})
+    strm.setPosition(0)
+    var d0: set[StatusHoly]
+    strm.cborUnpack(d0)
+    check d0 == {shOk, shErr, shCrit}
+
   test "sets toCbor and fromCbor":
     var s0: set[Status] = {}
     # empty set encodes as empty array
@@ -434,14 +442,16 @@ suite "sets (canonical + roundtrip)":
 
   test "sets toCbor and fromCbor":
     var s2: set[Status] = {stCrit, stOk}
-    # canonical ascending ordinals: [0, 11]
-    check toCbor(s2) == "\x82\x00\x0b"
+    # canonical ascending ordinals: [ord(stOk), ord(stCrit)]
+    let expected = "\x82" & toCbor(stOk) & toCbor(stCrit)
+    check toCbor(s2) == expected
     let d2 = fromCbor(toCbor(s2), set[Status])
     check d2 == s2
 
   test "sets toCbor and fromCbor":
     var s3: set[Status] = {stWarn, stErr, stCrit}
-    # [1, 10, 11] -> 0x83 0x01 0x0a 0x0b
-    check toCbor(s3) == "\x83\x01\x0a\x0b"
+    # Construct expected via element encodings in ascending order
+    let expected3 = "\x83" & toCbor(stWarn) & toCbor(stErr) & toCbor(stCrit)
+    check toCbor(s3) == expected3
     let d3 = fromCbor(toCbor(s3), set[Status])
     check d3 == s3
