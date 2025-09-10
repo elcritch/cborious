@@ -1,5 +1,3 @@
-import std/strutils
-import std/unicode
 import std/math
 import ./types
 import ./stream
@@ -187,8 +185,8 @@ proc ednFloatSimple(s: Stream, ai: uint8): string =
     if f == NegInf: return "-Infinity"
     return $f
   of AiIndef:
-    # Break code should never appear as a value here
-    return "simple(31)" # be defensive
+    # Break code should never appear as a value here; keep defensive text
+    return "simple(31)"
   else:
     # other simple values 0..19 (excluding 20..23 handled above)
     return "simple(" & $ai & ")"

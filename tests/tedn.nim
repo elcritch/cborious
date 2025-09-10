@@ -11,7 +11,6 @@ template EDNof[T](v: T): string =
 
 suite "EDN pretty printer":
   test "integers and negatives":
-    echo "T: integers"
     check EDNof(0) == "0"
     check EDNof(1) == "1"
     check EDNof(10) == "10"
@@ -19,7 +18,6 @@ suite "EDN pretty printer":
     check EDNof(-10) == "-10"
 
   test "booleans and null/undefined":
-    echo "T: bool/null/undef"
     check EDNof(true) == "true"
     check EDNof(false) == "false"
     block:
@@ -32,18 +30,15 @@ suite "EDN pretty printer":
       check ednDump(s.data) == "undefined"
 
   test "text string escaping":
-    echo "T: text"
     check EDNof("") == "\"\""
     check EDNof("hi") == "\"hi\""
     check EDNof("a\n\t\"") == "\"a\\n\\t\\\"\""
 
   test "byte strings (hex)":
-    echo "T: bytes"
     let b = @[0x00'u8, 0xff'u8, 0x0a'u8]
     check EDNof(b) == "h'00ff0a'"
 
   test "arrays and maps":
-    echo "T: arrays/maps"
     check EDNof(@[1,2,3]) == "[1, 2, 3]"
     block:
       var t = initTable[string, int]()
@@ -51,7 +46,6 @@ suite "EDN pretty printer":
       check ednDump(toCbor(t)) == "{\"a\": 1}"
 
   test "floats and specials":
-    echo "T: floats"
     check EDNof(1.5) == "1.5"
     block:
       var s = CborStream.init()
@@ -68,7 +62,6 @@ suite "EDN pretty printer":
       check ednDump(s.data) == "NaN"
 
   test "tags generic form":
-    echo "T: tags"
     var dt: DateTime = parse("2013-03-21T20:04:00Z", "yyyy-MM-dd'T'HH:mm:ss'Z'")
     var s = CborStream.init()
     pack(s, dt)
@@ -76,7 +69,6 @@ suite "EDN pretty printer":
     check edn.contains("0(\"") and edn.endsWith(")")
 
   test "indefinite strings and arrays":
-    echo "T: indef"
     # Text string: 0x7f, 'a', 'b', break
     let indefTxt = "\x7f\x61a\x61b\xff"
     check ednDump(indefTxt) == "\"ab\""
