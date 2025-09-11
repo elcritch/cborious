@@ -4,9 +4,10 @@ switch("nimcache", ".nimcache")
 
 proc listTestFiles(): seq[string] =
   # Use staticExec to remain NimScript-compatible
-  let listing = staticExec("sh -lc 'ls -1 tests/t*.nim tests/test*.nim 2>/dev/null || true'")
-  result = listing.splitLines().filterIt(it.len > 0).deduplicate()
+  let listing = staticExec("ls -1 tests/t*.nim tests/test*.nim 2>/dev/null || true")
+  result = listing.splitLines().filterIt(it.len > 0)
   result.sort()
+  result = result.deduplicate()
 
 task unitTests, "Run unit tests (fast)":
   let files = listTestFiles()
@@ -27,8 +28,8 @@ task test, "Run full test suite":
 
 task docs, "Generate API docs to docs/api":
   let outDir = "docs/api"
-  exec "sh -lc 'mkdir -p " & outDir & "'"
-  let listing2 = staticExec("sh -lc 'find src -type f -name " & "\'*.nim\'" & " -print 2>/dev/null || true'")
+  exec "mkdir -p " & outDir
+  let listing2 = staticExec("find src -type f -name '*.nim' -print 2>/dev/null || true")
   var files = listing2.splitLines().filterIt(it.len > 0)
   files.sort()
   if files.len == 0:
