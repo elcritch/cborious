@@ -1,4 +1,4 @@
-import std/[monotimes, times, strformat, strutils, os, sequtils]
+import std/[monotimes, times, strformat, strutils, os, sequtils, math]
 
 # Compare round-trip CBOR serialization for:
 # - cborious (this repo)
@@ -8,10 +8,10 @@ import cborious
 import cbor_serialization
 
 type
-  Person = (uint16, int16, bool, int, float64)
+  Person = (uint16, int16, bool, int, float64, float32, (int, int))
 
 proc samplePerson(): Person =
-  ( 42,  100,  true, 100, 3.1415 )
+  ( 42,  100,  true, 100, 2.71828, 3.1415, (1, 2) )
 
 proc samplePeople(): seq[Person] =
   var p = samplePerson()
