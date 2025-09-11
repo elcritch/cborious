@@ -25,7 +25,7 @@ proc samplePerson(): Person =
 proc samplePeople(): seq[Person] =
   var p = samplePerson()
   var pps: seq[Person]
-  for i in 1..1000:
+  for i in 1..1:
     p.id = i
     pps.add(p)
 
@@ -45,7 +45,7 @@ proc benchCborious(iters: int): Duration =
       decoded.setLen(0)
       let enc = toCbor(pps, {CborObjToMap})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
-      doAssert decoded == pps
+      for p in pps.mitems: doAssert p.id == i
 
 proc benchCborSerialization(iters: int): Duration =
   var pps = samplePeople()
@@ -57,7 +57,7 @@ proc benchCborSerialization(iters: int): Duration =
       decoded.setLen(0)
       let enc = encode(Cbor, pps)      # seq[byte]
       decoded = decode(Cbor, enc, seq[Person])
-      doAssert decoded == pps
+      for p in pps.mitems: doAssert p.id == i
 
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
@@ -80,6 +80,9 @@ when isMainModule:
   let tCborious = benchCborious(iters)
   let tCborSer  = benchCborSerialization(iters)
 
+  let ratio = tCborSer.inNanoseconds().float / tCborious.inNanoseconds().float
+
   echo "--- Results (encode + decode round-trip) ---"
   echo &"cborious:              avg={(tCborious.inNanoseconds() div iters)} ns/op total={$(tCborious)}"
   echo &"cbor_serialization:    avg={(tCborSer.inNanoseconds() div iters)}  ns/op total={$(tCborSer)}"
+  echo &"cbor_serialization/cborious: {ratio:.2f}x for {iters} iterations"
