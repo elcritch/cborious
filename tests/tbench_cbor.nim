@@ -22,6 +22,13 @@ proc samplePerson(): Person =
     scores: @[1, 2, 3, 5, 8]
   )
 
+proc samplePeople(): seq[Person] =
+  var p = samplePerson()
+  var pps: seq[Person]
+  for i in 1..100:
+    p.id = i
+    pps.add(p)
+
 template bench(blk: untyped): int64 =
   let t0 = getMonoTime()
   `blk`
@@ -29,20 +36,22 @@ template bench(blk: untyped): int64 =
   dt.inNanoseconds()
 
 proc benchCborious(iters: int): int64 =
-  let p = samplePerson()
+  let pps = samplePeople()
+
   bench:
-    var decoded: Person
+    var decoded: seq[Person]
     for i in 0..<iters:
-      let enc = toCbor(p)            # string
+      let enc = toCbor(pps, {CborObjToMap})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
 
 proc benchCborSerialization(iters: int): int64 =
-  let p = samplePerson()
+  let pps = samplePeople()
+
   bench:
-    var decoded: Person
+    var decoded: seq[Person]
     for i in 0..<iters:
-      let enc = encode(Cbor, p)      # seq[byte]
-      decoded = decode(Cbor, enc, Person)
+      let enc = encode(Cbor, pps)      # seq[byte]
+      decoded = decode(Cbor, enc, seq[Person])
 
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
