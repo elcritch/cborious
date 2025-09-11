@@ -41,6 +41,7 @@ proc benchCborious(iters: int): int64 =
   bench:
     var decoded: seq[Person]
     for i in 0..<iters:
+      decoded.setLen(0)
       let enc = toCbor(pps, {CborObjToMap})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
 
@@ -50,6 +51,7 @@ proc benchCborSerialization(iters: int): int64 =
   bench:
     var decoded: seq[Person]
     for i in 0..<iters:
+      decoded.setLen(0)
       let enc = encode(Cbor, pps)      # seq[byte]
       decoded = decode(Cbor, enc, seq[Person])
 
