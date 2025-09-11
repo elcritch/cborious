@@ -8,10 +8,10 @@ import cborious
 import cbor_serialization
 
 type
-  Person = (uint16, int16, bool, int)
+  Person = (uint16, int16, bool, int, float64)
 
 proc samplePerson(): Person =
-  ( 42,  100,  true, 100, )
+  ( 42,  100,  true, 100, 3.1415 )
 
 proc samplePeople(): seq[Person] =
   var p = samplePerson()
@@ -34,7 +34,7 @@ proc benchCborious(iters: int): Duration =
     for i in 0..<iters:
       # for p in pps.mitems: p.id = i.uint16
       decoded.setLen(0)
-      let enc = toCbor(pps, {CborObjToArray})            # string
+      let enc = toCbor(pps, {CborObjToMap})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
       # for p in pps.mitems: doAssert p.id == i.uint16
 
@@ -58,7 +58,7 @@ when isMainModule:
     20000
 
   let p = samplePerson()
-  let encCborious = toCbor(p, {CborObjToArray})
+  let encCborious = toCbor(p, {CborObjToMap})
   let encCborSer = encode(Cbor, p)
 
   echo &"Benchmarking with iters={iters}"
