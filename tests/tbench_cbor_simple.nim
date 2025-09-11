@@ -8,25 +8,16 @@ import cborious
 import cbor_serialization
 
 type
-  Person = object
-    id: int
-    name: string
-    active: bool
-    scores: seq[int]
+  Person = (uint16, int16, bool, int)
 
 proc samplePerson(): Person =
-  Person(
-    id: 42,
-    name: "Nim User",
-    active: true,
-    scores: @[1, 2, 3, 5, 8]
-  )
+  ( 42,  100,  true, 100, )
 
 proc samplePeople(): seq[Person] =
   var p = samplePerson()
   var pps: seq[Person]
   for i in 1..100:
-    p.id = i
+    p[0] = i.uint16
     pps.add(p)
 
 template bench(blk: untyped): Duration =
@@ -41,11 +32,11 @@ proc benchCborious(iters: int): Duration =
   bench:
     var decoded: seq[Person]
     for i in 0..<iters:
-      for p in pps.mitems: p.id = i
+      # for p in pps.mitems: p.id = i.uint16
       decoded.setLen(0)
-      let enc = toCbor(pps, {CborObjToMap})            # string
+      let enc = toCbor(pps, {CborObjToArray})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
-      for p in pps.mitems: doAssert p.id == i
+      # for p in pps.mitems: doAssert p.id == i.uint16
 
 proc benchCborSerialization(iters: int): Duration =
   var pps = samplePeople()
@@ -53,11 +44,11 @@ proc benchCborSerialization(iters: int): Duration =
   bench:
     var decoded: seq[Person]
     for i in 0..<iters:
-      for p in pps.mitems: p.id = i
+      # for p in pps.mitems: p.id = i.uint16
       decoded.setLen(0)
       let enc = encode(Cbor, pps)      # seq[byte]
       decoded = decode(Cbor, enc, seq[Person])
-      for p in pps.mitems: doAssert p.id == i
+      # for p in pps.mitems: doAssert p.id == i.uint16
 
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
@@ -67,7 +58,7 @@ when isMainModule:
     20000
 
   let p = samplePerson()
-  let encCborious = toCbor(p, {CborObjToMap})
+  let encCborious = toCbor(p, {CborObjToArray})
   let encCborSer = encode(Cbor, p)
 
   echo &"Benchmarking with iters={iters}"
@@ -75,6 +66,7 @@ when isMainModule:
   echo &"cbor_serialization: one-shot size={encCborSer.len} bytes repr={encCborSer.repr}"
 
   let tCborious0 = benchCborious(iters)
+
   let tCborious = benchCborious(iters)
   let tCborSer0  = benchCborSerialization(iters)
   let tCborSer  = benchCborSerialization(iters)
