@@ -1,4 +1,4 @@
-import std/[monotimes, times, strformat, strutils, os]
+import std/[monotimes, times, strformat, strutils, os, sequtils]
 
 # Compare round-trip CBOR serialization for:
 # - cborious (this repo)
@@ -25,7 +25,7 @@ proc samplePerson(): Person =
 proc samplePeople(): seq[Person] =
   var p = samplePerson()
   var pps: seq[Person]
-  for i in 1..100:
+  for i in 1..1000:
     p.id = i
     pps.add(p)
 
@@ -36,24 +36,28 @@ template bench(blk: untyped): Duration =
   dt
 
 proc benchCborious(iters: int): Duration =
-  let pps = samplePeople()
+  var pps = samplePeople()
 
   bench:
     var decoded: seq[Person]
     for i in 0..<iters:
+      for p in pps.mitems: p.id = i
       decoded.setLen(0)
       let enc = toCbor(pps, {CborObjToMap})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
+      doAssert decoded == pps
 
 proc benchCborSerialization(iters: int): Duration =
-  let pps = samplePeople()
+  var pps = samplePeople()
 
   bench:
     var decoded: seq[Person]
     for i in 0..<iters:
+      for p in pps.mitems: p.id = i
       decoded.setLen(0)
       let enc = encode(Cbor, pps)      # seq[byte]
       decoded = decode(Cbor, enc, seq[Person])
+      doAssert decoded == pps
 
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
@@ -67,8 +71,8 @@ when isMainModule:
   let encCborSer = encode(Cbor, p)
 
   echo &"Benchmarking with iters={iters}"
-  echo &"cborious:        one-shot size={encCborious.len} bytes"
-  echo &"cbor_serialization: one-shot size={encCborSer.len} bytes"
+  echo &"cborious:           one-shot size={encCborious.len} bytes repr={encCborious.toOpenArrayByte(0, encCborious.len-1).toSeq().repr}"
+  echo &"cbor_serialization: one-shot size={encCborSer.len} bytes repr={encCborSer.repr}"
 
   let tCborious0 = benchCborious(iters)
   let tCborSer0  = benchCborSerialization(iters)
