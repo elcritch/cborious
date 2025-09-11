@@ -29,13 +29,13 @@ proc samplePeople(): seq[Person] =
     p.id = i
     pps.add(p)
 
-template bench(blk: untyped): int64 =
+template bench(blk: untyped): Duration =
   let t0 = getMonoTime()
   `blk`
   let dt = getMonoTime() - t0
-  dt.inNanoseconds()
+  dt
 
-proc benchCborious(iters: int): int64 =
+proc benchCborious(iters: int): Duration =
   let pps = samplePeople()
 
   bench:
@@ -45,7 +45,7 @@ proc benchCborious(iters: int): int64 =
       let enc = toCbor(pps, {CborObjToMap})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
 
-proc benchCborSerialization(iters: int): int64 =
+proc benchCborSerialization(iters: int): Duration =
   let pps = samplePeople()
 
   bench:
@@ -58,7 +58,7 @@ proc benchCborSerialization(iters: int): int64 =
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
   let iters = try:
-    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "40_000"))
+    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "80_000"))
   except ValueError:
     20000
 
@@ -70,14 +70,12 @@ when isMainModule:
   echo &"cborious:        one-shot size={encCborious.len} bytes"
   echo &"cbor_serialization: one-shot size={encCborSer.len} bytes"
 
+  let tCborious0 = benchCborious(iters)
+  let tCborSer0  = benchCborSerialization(iters)
+
   let tCborious = benchCborious(iters)
   let tCborSer  = benchCborSerialization(iters)
 
-  proc fmt(ns: int64): string =
-    let ms = ns div 1_000_000
-    let us = (ns div 1_000) mod 1_000
-    &"{ms}ms {us}us"
-
   echo "--- Results (encode + decode round-trip) ---"
-  echo &"cborious:            total={fmt(tCborious)}  avg={(tCborious div iters)} ns/op"
-  echo &"cbor_serialization:  total={fmt(tCborSer)}   avg={(tCborSer div iters)} ns/op"
+  echo &"cborious:              avg={(tCborious.inNanoseconds() div iters)} ns/op total={$(tCborious)}"
+  echo &"cbor_serialization:    avg={(tCborSer.inNanoseconds() div iters)}  ns/op total={$(tCborSer)}"
