@@ -14,7 +14,7 @@ Requires Nim >= 2.0.14.
 ```bash
 nimble install cborious # when published
 # or for development
-nimble develop
+atlas install
 ```
 
 ## Usage
