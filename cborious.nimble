@@ -11,3 +11,6 @@ srcDir        = "src"
 
 requires "nim >= 2.0.14"
 
+feature "benchmark":
+  requires "https://github.com/elcritch/nim-cbor-serialization.git"
+  requires "msgpack4nim"

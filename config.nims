@@ -1,5 +1,7 @@
 import std/[os, strutils, sequtils, algorithm]
 
+switch("nimcache", ".nimcache")
+
 proc listTestFiles(): seq[string] =
   # Use staticExec to remain NimScript-compatible
   let listing = staticExec("sh -lc 'ls -1 tests/t*.nim tests/test*.nim 2>/dev/null || true'")
