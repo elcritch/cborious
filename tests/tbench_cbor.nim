@@ -1,4 +1,4 @@
-import std/[times, strformat, strutils, os]
+import std/[monotimes, times, strformat, strutils, os]
 
 # Compare round-trip CBOR serialization for:
 # - cborious (this repo)
@@ -22,39 +22,37 @@ proc samplePerson(): Person =
     scores: @[1, 2, 3, 5, 8]
   )
 
+template bench(blk: untyped): int64 =
+  let t0 = getMonoTime()
+  `blk`
+  let dt = getMonoTime() - t0
+  dt.inNanoseconds()
+
 proc benchCborious(iters: int): int64 =
   let p = samplePerson()
-  let t0 = cpuTime()
-  var decoded: Person
-  var i = 0
-  while i < iters:
-    let enc = toCbor(p)            # string
-    fromCbor(enc, decoded)         # decode into `decoded`
-    inc i
-  let dt = cpuTime() - t0
-  result = int64(dt * 1_000_000_000)
+  bench:
+    var decoded: Person
+    for i in 0..<iters:
+      let enc = toCbor(p)            # string
+      fromCbor(enc, decoded)         # decode into `decoded`
 
 proc benchCborSerialization(iters: int): int64 =
   let p = samplePerson()
-  let t0 = cpuTime()
-  var decoded: Person
-  var i = 0
-  while i < iters:
-    let enc = encode(Cbor, p)      # seq[byte]
-    decoded = decode(Cbor, enc, Person)
-    inc i
-  let dt = cpuTime() - t0
-  result = int64(dt * 1_000_000_000)
+  bench:
+    var decoded: Person
+    for i in 0..<iters:
+      let enc = encode(Cbor, p)      # seq[byte]
+      decoded = decode(Cbor, enc, Person)
 
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
   let iters = try:
-    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "20000"))
+    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "40_000"))
   except ValueError:
     20000
 
   let p = samplePerson()
-  let encCborious = toCbor(p)
+  let encCborious = toCbor(p, {CborObjToMap})
   let encCborSer = encode(Cbor, p)
 
   echo &"Benchmarking with iters={iters}"
