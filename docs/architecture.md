@@ -1,10 +1,9 @@
 # CBORious Architecture
 
-Ultra-fast, standards-compliant CBOR for Nim 2.x, designed for zero-copy reads, deterministic/canonical encoding, and compile-time derivation of serializers using Nim’s macros/templates (inspired by deps/msgpack4nim). This document captures the design, public surface, performance strategy, and compliance choices, with cross-references to deps/cbor-x-js, deps/QCBOR, and RFC 8949.
+Ultra-fast, standards-compliant CBOR for Nim 2.x, designed for deterministic/canonical encoding and compile-time derivation of serializers using Nim’s macros/templates (inspired by deps/msgpack4nim). This document captures the design, public surface, performance strategy, and compliance choices, with cross-references to deps/cbor-x-js, deps/QCBOR, and RFC 8949.
 
 ## Goals
 - Throughput and latency: match or exceed QCBOR-class performance in C while keeping Nim ergonomics.
-- Zero-copy where safe: avoid allocations for reading byte/text strings and simple values.
 - Predictable memory: bounded, stack-friendly, and arena-friendly options.
 - Deterministic/canonical encoding modes: follow RFC 8949 requirements for Deterministic and Canonical CBOR.
 - Nim-first ergonomics: compile-time derivation for objects/variants inspired by msgpack4nim patterns.
@@ -44,12 +43,6 @@ Implementation notes
 - Nim primitives: `copyMem`, `moveMem`, `cast[ptr UncheckedArray[byte]]`, `system.endians`; `unsafeAddr` for in-place numeric encoding.
 - Maintain a `p` pointer (index) and `limit`; never read/write past `limit`. Use `uncheckedInc`/`dec` inside `{.push checks: off.}` regions.
 - Avoid `seq` reallocation in writers by reserving capacity (exponential growth, like cbor-x-js buffer writers).
-
-## Zero-Copy Reads (inspired by QCBOR)
-- Return slices for byte/text strings referencing the input buffer; caller controls lifetime.
-- Provide `copyText`/`copyBytes` helpers when owning data is needed.
-- Indefinite-length strings: expose as an iterator of chunks; optional join helper that allocates.
-- Map/array skipping: `skipItem(r)` advances past the current item (and nested items) without building structures.
 
 ## Streaming Reader/Writer
 - Reader maintains a container stack with remaining item counts (or `indefinite = true`).
@@ -94,7 +87,7 @@ Implementation notes
 ## Performance Plan
 - Microbenchmarks: per-type encode/decode and mixed documents.
 - Realistic workloads: streaming ND-CBOR logs; macro-derived object graphs.
-- Adopt QCBOR patterns (zero-copy slices, bounded stacks, pull parser) and cbor-x-js patterns (pre-sized buffers, fast small-int paths, minimal branching).
+- Adopt QCBOR patterns (bounded stacks, pull parser) and cbor-x-js patterns (pre-sized buffers, fast small-int paths, minimal branching).
 - Nim-specific: disable bounds checks in hot paths; minimize ARC/ORC traffic; pre-size capacities; prefer stack temporaries.
 
 ## Interoperability & Compliance
@@ -111,7 +104,7 @@ Implementation notes
 
 ## Implementation Roadmap
 1) Core types and options; fast-path scalars; basic writer/reader.
-2) Arrays/maps known-length; zero-copy slices; skipping; error model.
+2) Arrays/maps known-length; skipping; error model.
 3) Indefinite-length containers and chunked strings; break handling.
 4) Deterministic/canonical encoding; key sorting with scratch buffers.
 5) Derivation macros/templates patterned on msgpack4nim; attributes.
@@ -121,7 +114,7 @@ Implementation notes
 
 ## References & Prior Art
 - deps/msgpack4nim: compile-time deriving via templates/macros; specialization patterns for primitives and containers.
-- deps/QCBOR: zero-copy pull parser, bounded stacks, deterministic guidelines and compliance focus.
+- deps/QCBOR: pull parser, bounded stacks, deterministic guidelines and compliance focus.
 - deps/cbor-x-js: high-performance buffer management, fast small-int and string paths, minimal branching.
 - RFC 8949 (docs/rfc8949.md): definitive specification for CBOR format and canonical/deterministic requirements.
 
