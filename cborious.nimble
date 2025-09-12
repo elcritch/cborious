@@ -13,4 +13,5 @@ requires "nim >= 2.0.14"
 
 feature "benchmark":
   requires "https://github.com/elcritch/nim-cbor-serialization.git"
+  requires "https://git.sr.ht/~ehmry/nim_cbor"
   requires "msgpack4nim"
