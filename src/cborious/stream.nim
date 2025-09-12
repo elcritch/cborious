@@ -3,11 +3,11 @@ import std/endians
 
 # CBORious stream implementation written in nim
 #
-# This code mostly taken from msgpack4nim, which is:
+# The code in this file mostly taken from msgpack4nim, which is:
 # https://github.com/Araq/msgpack4nim
 #
 # The license is:
-  #
+#
 # MessagePack implementation written in nim
 #
 # Copyright (c) 2015-2019 Andri Lim
