@@ -25,11 +25,9 @@ proc samplePerson(): Person =
 
 proc samplePeople(): seq[Person] =
   var p = samplePerson()
-  var pps: seq[Person]
   for i in 1..100:
     p.id = i
-    pps.add(p)
-  result = pps
+    result.add(p)
 
 template bench(blk: untyped): Duration =
   let t0 = getMonoTime()
