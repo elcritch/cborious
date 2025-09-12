@@ -67,7 +67,7 @@ proc benchCborEm(iters: int): Duration =
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
   let iters = try:
-    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "40_000"))
+    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "20_000"))
   except ValueError:
     20000
 
