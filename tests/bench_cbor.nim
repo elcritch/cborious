@@ -40,36 +40,36 @@ proc benchCborious(iters: int): Duration =
   var pps = samplePeople()
 
   bench:
+    for p in pps.mitems: p.id = 0
+    let enc = toCbor(pps, {CborObjToMap})            # string
     for i in 0..<iters:
-      for p in pps.mitems: p.id = i
-      let enc = toCbor(pps, {CborObjToMap})            # string
-      # var decoded: seq[Person]
-      # fromCbor(enc, decoded)         # decode into `decoded`
-      # for p in decoded.mitems: doAssert p.id == i
+      var decoded: seq[Person]
+      fromCbor(enc, decoded)         # decode into `decoded`
+      for p in decoded.mitems: doAssert p.id == i
 
 proc benchCborSerialization(iters: int): Duration =
   var pps = samplePeople()
 
   bench:
+    for p in pps.mitems: p.id = 0
+    let enc = encode(Cbor, pps)      # seq[byte]
     for i in 0..<iters:
-      for p in pps.mitems: p.id = i
-      let enc = encode(Cbor, pps)      # seq[byte]
-      # var decoded: seq[Person]
-      # decoded = decode(Cbor, enc, seq[Person])
-      # for p in decoded.mitems: doAssert p.id == i
+      var decoded: seq[Person]
+      decoded = decode(Cbor, enc, seq[Person])
+      for p in decoded.mitems: doAssert p.id == i
 
 
 proc benchCborEm(iters: int): Duration =
   var pps = samplePeople()
 
   bench:
+    for p in pps.mitems: p.id = 0
+    let c = cbor_em.encode(pps)
     for i in 0..<iters:
-      for p in pps.mitems: p.id = i
-      let c = cbor_em.encode(pps)
-      # let cn = cbor_em.parseCbor(c)
-      # var decoded: seq[Person]
-      # discard fromCbor(decoded, cn)
-      # for p in decoded.mitems: doAssert p.id == i
+      let cn = cbor_em.parseCbor(c)
+      var decoded: seq[Person]
+      discard fromCbor(decoded, cn)
+      for p in decoded.mitems: doAssert p.id == i
 
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
