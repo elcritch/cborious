@@ -12,9 +12,8 @@ CBORious is a fast, standards-compliant CBOR (Concise Binary Object Representati
 Requires Nim >= 2.0.14.
 
 ```bash
-nimble install cborious # when published
-# or for development
-atlas install
+atlas use https://github.com/elcritch/cborious 
+nimble install https://github.com/elcritch/cborious 
 ```
 
 ## Usage

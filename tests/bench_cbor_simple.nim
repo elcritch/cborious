@@ -36,7 +36,7 @@ proc benchCborious(iters: int): Duration =
     for i in 0..<iters:
       for p in pps.mitems: p[0] = i.uint16
       decoded.setLen(0)
-      let enc = toCbor(pps, {CborObjToMap})            # string
+      let enc = toCbor(pps, {})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
       doAssert decoded.len == pps.len
 
@@ -67,12 +67,12 @@ proc benchCborEm(iters: int): Duration =
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
   let iters = try:
-    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "20_000"))
+    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "10_000"))
   except ValueError:
     20000
 
   let p = samplePerson()
-  let encCborious = toCbor(p, {CborObjToMap})
+  let encCborious = toCbor(p, {})
   let encCborSer = encode(Cbor, p)
   let encCborEm = cbor_em.encode(p)
 
