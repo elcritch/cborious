@@ -34,7 +34,7 @@ proc benchCborious(iters: int): Duration =
   bench:
     var decoded: seq[Person]
     for i in 0..<iters:
-      # for p in pps.mitems: p.id = i.uint16
+      for p in pps.mitems: p[0] = i.uint16
       decoded.setLen(0)
       let enc = toCbor(pps, {CborObjToMap})            # string
       fromCbor(enc, decoded)         # decode into `decoded`
@@ -46,7 +46,7 @@ proc benchCborSerialization(iters: int): Duration =
   bench:
     var decoded: seq[Person]
     for i in 0..<iters:
-      # for p in pps.mitems: p.id = i.uint16
+      for p in pps.mitems: p[0] = i.uint16
       decoded.setLen(0)
       let enc = encode(Cbor, pps)      # seq[byte]
       decoded = decode(Cbor, enc, seq[Person])
@@ -57,6 +57,7 @@ proc benchCborEm(iters: int): Duration =
 
   bench:
     for i in 0..<iters:
+      for p in pps.mitems: p[0] = i.uint16
       let c = cbor_em.encode(pps)
       let cn = cbor_em.parseCbor(c)
       var decoded: seq[Person]
@@ -66,7 +67,7 @@ proc benchCborEm(iters: int): Duration =
 when isMainModule:
   # Allow overriding iterations via env; default kept modest for CI speed.
   let iters = try:
-    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "10_000"))
+    strutils.parseInt(getEnv("CBOR_BENCH_ITERS", "40_000"))
   except ValueError:
     20000
 
@@ -81,10 +82,10 @@ when isMainModule:
   echo &"cbor_em:            one-shot size={encCborEm.len} bytes repr={encCborEm.toOpenArrayByte(0, encCborEm.len-1).toSeq().repr}"
 
   let tCborious0 = benchCborious(iters)
-
   let tCborious = benchCborious(iters)
   let tCborSer0  = benchCborSerialization(iters)
   let tCborSer  = benchCborSerialization(iters)
+  let tCborEm0  = benchCborEm(iters)
   let tCborEm  = benchCborEm(iters)
 
   let ratio = tCborSer.inNanoseconds().float / tCborious.inNanoseconds().float
