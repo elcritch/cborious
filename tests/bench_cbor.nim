@@ -66,7 +66,7 @@ proc benchCborEm(iters: int): Duration =
     for i in 0..<iters:
       for p in pps.mitems: p.id = i
       let c = cbor_em.encode(pps)
-      let cn = cbor_em.parseCbor(c)
+      # let cn = cbor_em.parseCbor(c)
       # var decoded: seq[Person]
       # discard fromCbor(decoded, cn)
       # for p in decoded.mitems: doAssert p.id == i
