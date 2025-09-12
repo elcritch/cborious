@@ -1,30 +1,14 @@
-import std/[os, strutils, sequtils, algorithm]
+import std/[os, strutils, strformat, sequtils, algorithm]
 
 switch("nimcache", ".nimcache")
 
-proc listTestFiles(): seq[string] =
-  # Use staticExec to remain NimScript-compatible
-  let listing = staticExec("ls -1 tests/t*.nim tests/test*.nim 2>/dev/null || true")
-  result = listing.splitLines().filterIt(it.len > 0)
-  result.sort()
-  result = result.deduplicate()
-
-task unitTests, "Run unit tests (fast)":
-  let files = listTestFiles()
-  if files.len == 0:
-    echo "No tests found under tests/."
-  for f in files:
-    echo "[unitTests] Running ", f
-    exec "nim r " & f
-
 task test, "Run full test suite":
-  let files = listTestFiles()
-  if files.len == 0:
-    echo "No tests found under tests/."
-  # In the future, add repo fixture runs here.
-  for f in files:
-    echo "[test] Running ", f
-    exec "nim r " & f
+  for kind, path in walkDir("tests"):
+    if kind == pcFile and path.endsWith(".nim") and not path.endsWith("config.nims"):
+      let name = splitFile(path).name
+      if not name.startsWith("t"): continue # run only t*.nim files
+      echo fmt"[sigils] Running {path}"
+      exec fmt"nim c -r {path}"
 
 task docs, "Generate API docs to docs/api":
   let outDir = "docs/api"
