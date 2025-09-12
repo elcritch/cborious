@@ -19,6 +19,7 @@ proc samplePeople(): seq[Person] =
   for i in 1..100:
     p[0] = i.uint16
     pps.add(p)
+  result = pps
 
 template bench(blk: untyped): Duration =
   let t0 = getMonoTime()

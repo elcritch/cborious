@@ -29,6 +29,7 @@ proc samplePeople(): seq[Person] =
   for i in 1..100:
     p.id = i
     pps.add(p)
+  result = pps
 
 template bench(blk: untyped): Duration =
   let t0 = getMonoTime()
@@ -40,22 +41,24 @@ proc benchCborious(iters: int): Duration =
   var pps = samplePeople()
 
   bench:
-    for p in pps.mitems: p.id = 0
-    let enc = toCbor(pps, {CborObjToMap})            # string
     for i in 0..<iters:
+      for p in pps.mitems: p.id = i
+      let enc = toCbor(pps, {CborObjToMap})            # string
       var decoded: seq[Person]
       fromCbor(enc, decoded)         # decode into `decoded`
+      doAssert decoded.len == pps.len
       for p in decoded.mitems: doAssert p.id == i
 
 proc benchCborSerialization(iters: int): Duration =
   var pps = samplePeople()
 
   bench:
-    for p in pps.mitems: p.id = 0
-    let enc = encode(Cbor, pps)      # seq[byte]
     for i in 0..<iters:
+      for p in pps.mitems: p.id = i
+      let enc = encode(Cbor, pps)      # seq[byte]
       var decoded: seq[Person]
       decoded = decode(Cbor, enc, seq[Person])
+      doAssert decoded.len == pps.len
       for p in decoded.mitems: doAssert p.id == i
 
 
@@ -63,12 +66,13 @@ proc benchCborEm(iters: int): Duration =
   var pps = samplePeople()
 
   bench:
-    for p in pps.mitems: p.id = 0
-    let c = cbor_em.encode(pps)
     for i in 0..<iters:
+      for p in pps.mitems: p.id = i
+      let c = cbor_em.encode(pps)
       let cn = cbor_em.parseCbor(c)
       var decoded: seq[Person]
       discard fromCbor(decoded, cn)
+      doAssert decoded.len == pps.len
       for p in decoded.mitems: doAssert p.id == i
 
 when isMainModule:
