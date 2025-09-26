@@ -184,13 +184,7 @@ proc fromJsonNode*(s: Stream, n: JsonNode) =
   of JObject:
     # Typed objects for CBOR-specific constructs
     var tField: JsonNode = nil
-    when compiles(n.hasKey("type")):
-      if n.hasKey("type"): tField = n["type"]
-    else:
-      try:
-        tField = n["type"]
-      except KeyError:
-        tField = nil
+    if n.hasKey("type"): tField = n["type"]
 
     if not tField.isNil and tField.kind == JString:
 
