@@ -46,7 +46,10 @@ proc readChunkLocal(s: Stream, majExpected: CborMajor, ai: uint8): string =
     if n < 0: raise newException(CborInvalidHeaderError, "negative length")
     return s.readExactStr(n)
 
-proc toJsonNode*(s: Stream): JsonNode =
+type CborJsonOptions* = enum
+  BinaryAsBase64
+
+proc toJsonNode*(s: Stream, options: set[CborJsonOptions] = {}): JsonNode =
   ## Convert the next CBOR item from stream `s` to a JsonNode.
   let (major, ai) = s.readInitial()
   case major
@@ -56,15 +59,18 @@ proc toJsonNode*(s: Stream): JsonNode =
   of CborMajor.Negative:
     let n = s.readAddInfo(ai)
     if n > uint64(high(int64)):
-      raise conversionError("CBOR negative integer out of range for JSON int")
+      raise newException(ValueError, "CBOR negative integer out of range for JSON int")
     result = newJInt(BiggestInt(- (int64(n) + 1'i64)))
   of CborMajor.Binary:
     let raw = s.readChunkLocal(CborMajor.Binary, ai)
-    let b64 = base64.encode(raw)
-    result = newJObject()
-    result.add("type", newJString("bin"))
-    result.add("len", newJInt(BiggestInt(raw.len)))
-    result.add("data", newJString(b64))
+    if BinaryAsBase64 in options:
+      let b64 = base64.encode(raw)
+      result = newJObject()
+      result.add("type", newJString("bin"))
+      result.add("len", newJInt(BiggestInt(raw.len)))
+      result.add("data", newJString(b64))
+    else:
+      result = newJString(raw)
   of CborMajor.String:
     let t = s.readChunkLocal(CborMajor.String, ai)
     result = newJString(t)
@@ -77,7 +83,7 @@ proc toJsonNode*(s: Stream): JsonNode =
       result.elems = move elems
     else:
       let n = int(s.readAddInfo(ai))
-      if n < 0: raise conversionError("negative array length")
+      if n < 0: raise newException(ValueError, "negative array length")
       result = JsonNode(kind: JArray)
       result.elems = newSeq[JsonNode](n)
       var i = 0
@@ -90,18 +96,18 @@ proc toJsonNode*(s: Stream): JsonNode =
       while not s.readIndefBreak():
         let key = toJsonNode(s)
         if key.kind != JString:
-          raise conversionError("json key needs a string")
+          raise newException(ValueError, "json key needs a string")
         result[key.getStr()] = toJsonNode(s)
     else:
       let len = int(s.readAddInfo(ai))
-      if len < 0: raise conversionError("negative map length")
+      if len < 0: raise newException(ValueError, "negative map length")
       result = JsonNode(kind: JObject)
       result.fields = initOrderedTable[string, JsonNode](nextPowerOfTwo(len))
       var i = 0
       while i < len:
         let key = toJsonNode(s)
         if key.kind != JString:
-          raise conversionError("json key needs a string")
+          raise newException(ValueError, "json key needs a string")
         result.fields[key.getStr()] = toJsonNode(s)
         inc i
   of CborMajor.Tag:
@@ -121,8 +127,7 @@ proc toJsonNode*(s: Stream): JsonNode =
       result = newJNull()
     of 23'u8:
       # Represent undefined explicitly to preserve distinction from null
-      result = newJObject()
-      result.add("type", newJString("undefined"))
+      result = newJNull()
     of 24'u8:
       let v = uint8(s.readChar())
       let o = newJObject()
@@ -139,7 +144,7 @@ proc toJsonNode*(s: Stream): JsonNode =
       let bits = s.unstore64()
       result = newJFloat(cast[float64](bits))
     of AiIndef:
-      raise conversionError("unexpected break code in value position")
+      raise newException(ValueError, "unexpected break code in value position")
     else:
       # Other simple values 0..19
       let o = newJObject()
@@ -186,13 +191,15 @@ proc fromJsonNode*(s: Stream, n: JsonNode) =
         tField = n["type"]
       except KeyError:
         tField = nil
+
     if not tField.isNil and tField.kind == JString:
+
       let t = tField.getStr()
       case t
       of "bin":
         let dataField = n["data"]
         if dataField.isNil or dataField.kind != JString:
-          raise conversionError("bin object requires string 'data'")
+          raise newException(ValueError, "bin object requires string 'data'")
         let raw = base64.decode(dataField.getStr())
         var bytes = newSeq[uint8](raw.len)
         var i = 0
@@ -203,23 +210,25 @@ proc fromJsonNode*(s: Stream, n: JsonNode) =
         let tagField = n["tag"]
         let valField = n["value"]
         if tagField.isNil or (tagField.kind != JInt and tagField.kind != JFloat):
-          raise conversionError("tag object requires numeric 'tag'")
+          raise newException(ValueError, "tag object requires numeric 'tag'")
         let tagNum = (if tagField.kind == JInt: tagField.getInt().uint64
                       else: uint64(tagField.getFloat()))
         s.cborPackTag(CborTag(tagNum))
-        if valField.isNil: raise conversionError("tag object missing 'value'")
+        if valField.isNil: raise newException(ValueError, "tag object missing 'value'")
         fromJsonNode(s, valField)
       of "undefined":
         s.cborPackUndefined()
       of "simple":
         let vField = n["value"]
         if vField.isNil or vField.kind != JInt:
-          raise conversionError("simple object requires integer 'value'")
+          raise newException(ValueError, "simple object requires integer 'value'")
         let v = vField.getInt()
         if v < 0 or v > 255:
-          raise conversionError("simple value out of range 0..255")
+          raise newException(ValueError, "simple value out of range 0..255")
         s.writeSimple(uint8(v))
+
       else:
+
         # Unknown typed object; fall back to plain map encoding
         s.cborPackInt(uint64(n.len()), CborMajor.Map)
         for k, v in n:

@@ -52,16 +52,16 @@ suite "cbor2json conversions":
     s.cborPackUndefined()
     s.setPosition(0)
     let j5 = toJsonNode(s)
-    check j5.kind == JObject and j5["type"].getStr() == "undefined"
+    check j5.kind == JNull
     let enc5 = fromJsonNode(j5)
-    check enc5 == "\xf7"
+    check enc5 == "\xf6"
 
   test "binary":
     var bytes = @[0x00'u8, 0xff'u8]
     var s = CborStream.init()
     pack(s, bytes)
     s.setPosition(0)
-    let j = toJsonNode(s)
+    let j = toJsonNode(s, {BinaryAsBase64})
     check j.kind == JObject
     check j["type"].getStr() == "bin"
     check j["len"].getInt().int == 2
