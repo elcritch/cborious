@@ -61,6 +61,17 @@ suite "cbor2json conversions":
     var s = CborStream.init()
     pack(s, bytes)
     s.setPosition(0)
+    let j = toJsonNode(s)
+    check j.kind == JString
+    check j.getStr() == "\x00\xff"
+    let enc = fromJsonNode(j)
+    check enc.repr() == "\98\x00\xff".repr()
+
+  test "binary as base64":
+    var bytes = @[0x00'u8, 0xff'u8]
+    var s = CborStream.init()
+    pack(s, bytes)
+    s.setPosition(0)
     let j = toJsonNode(s, {BinaryAsBase64})
     check j.kind == JObject
     check j["type"].getStr() == "bin"
