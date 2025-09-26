@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.6.0"
+version       = "0.6.1"
 author        = "Jaremy Creechley"
 description   = "A new awesome nimble package"
 license       = "Apache-2.0"
