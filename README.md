@@ -2,6 +2,8 @@
 
 CBORious is a fast, standards-compliant CBOR (Concise Binary Object Representation) library for Nim 2.x. It offers streaming, deterministic and canonical encodings, and compile-time derivation of serializers inspired by msgpack4nim.
 
+If you're unfamiliar with CBOR checkout the [CBOR Book](https://cborbook.com/introduction/introduction.html)!
+
 ## Features
 - Streaming reader and writer
 - Deterministic and canonical encoding modes following [RFC 8949](docs/rfc8949.md)
@@ -51,6 +53,8 @@ assert out == data
 CBOR tags attach semantic meaning to the next value. Types can define a
 `cborTag` proc to associate a numeric tag with the type; the tag is emitted on
 encode and verified or skipped on decode. Unknown tags are ignored.
+
+Checkout the [IANA CBOR Tags](https://www.iana.org/assignments/cbor-tags/cbor-tags.xhtml).
 
 ```nim
 import cborious
