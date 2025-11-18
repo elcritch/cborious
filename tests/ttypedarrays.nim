@@ -231,7 +231,6 @@ suite "RFC 8746 array and typed-number tags":
 
     # Big-endian float64 typed array (tag 82)
     var sBe = CborStream.init()
-    #sBe.cborPackTypedArray(CborTagTaFloat64Be, dataIn)
     sBe.cborPackTypedArray(dataIn, bigEndian)
 
     var tagBe: CborTag
@@ -248,7 +247,6 @@ suite "RFC 8746 array and typed-number tags":
 
     var outBe: seq[float64]
     var stBe2 = CborStream.init(sBe.data)
-    #stBe2.cborUnpackTypedArray(CborTagTaFloat64Be, outBe)
     stBe2.cborUnpackTypedArray(outBe, bigEndian)
     check outBe.len == dataIn.len
     when system.cpuEndian == littleEndian:
@@ -258,7 +256,6 @@ suite "RFC 8746 array and typed-number tags":
 
     # Little-endian float64 typed array (tag 86)
     var sLe = CborStream.init()
-    #sLe.cborPackTypedArray(CborTagTaFloat64Le, dataIn)
     sLe.cborPackTypedArray(dataIn)
 
     var tagLe: CborTag
@@ -275,7 +272,6 @@ suite "RFC 8746 array and typed-number tags":
 
     var outLe: seq[float64]
     var stLe2 = CborStream.init(sLe.data)
-    #stLe2.cborUnpackTypedArray(CborTagTaFloat64Le, outLe)
     stLe2.cborUnpackTypedArray(outLe, littleEndian)
     check outLe.len == dataIn.len
     when system.cpuEndian == bigEndian:
