@@ -97,6 +97,16 @@ suite "RFC 8746 array and typed-number tags":
     expect CborInvalidArgError:
       discard parseTypedNumberTag(CborTag(40'u64))
 
+  test "uint8 typed array via tag 64 (ta-uint8) convert":
+    let dataIn = @[uint8(0), uint8(1), uint8(255)]
+    var s = CborStream.init()
+    let tt = CborTagTaUint8
+    check not compiles(s.cborPackTypedArray(tt, dataIn))
+
+    # Decode back to values
+    var outArr: seq[uint8]
+    check not compiles(s.cborUnpackTypedArray(tt, outArr))
+
   test "uint8 typed array via tag 64 (ta-uint8)":
     let dataIn = @[uint8(0), uint8(1), uint8(255)]
     var s = CborStream.init()
