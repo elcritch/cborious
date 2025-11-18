@@ -207,7 +207,7 @@ proc encodeTypedArrayValueBits[T](info: static TypedNumberInfo, x: T): uint64 =
     {.error: "Typed arrays currently support only integer and float element types".}
 
 
-proc decodeBitsFromBytes(info: const TypedNumberInfo, raw: openArray[byte], offset: int): uint64 =
+proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: int): uint64 =
   ## Decode info.bits bits from raw[offset ..< offset+elementBytes] into a
   ## host-endian unsigned integer value.
   let bytes = info.elementBytes
