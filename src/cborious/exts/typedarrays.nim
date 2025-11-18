@@ -442,10 +442,7 @@ proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpu
   if not s.readOneTag(tag):
     raise newException(CborInvalidHeaderError, "expected tag")
 
-  echo "TAG: ", tag
   let info = parseTypedNumberTag(tag)
-  echo "INFO: ", info
-
   let (major, ai) = s.readInitialSkippingTags()
 
   if major == CborMajor.Simple and (ai == 22'u8 or ai == 23'u8):
@@ -488,10 +485,6 @@ proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpu
   let count = totalBytes div elemBytes
   arrOut.setLen(count)
 
-  #for idx in 0 ..< count:
-  #  let bitsVal = decodeBitsFromStream(info, s)
-  #  arrOut[idx] = decodeTypedArrayValueFromBits[T](info, bitsVal)
-
   when sizeof(T) == 1:
     for idx in 0 ..< count:
       let x = s.readChar()
@@ -503,7 +496,6 @@ proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpu
           s.unstoreBE(typeof(T))
         else:
           s.unstoreBE(typeof(T))
-
   else:
     {.error:
       "unsupported element byte width for typed-array element: " & $elemBytes.}
