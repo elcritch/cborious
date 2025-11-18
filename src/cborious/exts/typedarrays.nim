@@ -364,7 +364,7 @@ proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpu
       let x = s.readChar()
       arrOut[idx] = cast[T](x)
   elif sizeof(T) in [2,4,8]:
-    if info.endian == system.cpuEndian and info.endian == endian:
+    if info.endian == endian:
       let ln = s.readData(arrOut[0].addr, totalBytes)
       if ln != totalBytes:
         raise newException(CborInvalidHeaderError,
