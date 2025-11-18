@@ -477,7 +477,9 @@ proc cborUnpackTypedArray*[T](s: Stream, tag: static[CborTag], arrOut: var seq[T
   ## The caller supplies the expected tag, and the element type T must be
   ## compatible with the number class and width implied by the tag.
   let info = parseTypedNumberTag(tag)
-  s.cborExpectTag(tag)
+  var tag: CborTag
+  if not s.readOneTag(tag):
+    raise newException(CborInvalidHeaderError, "expected tag")
 
   let (major, ai) = s.readInitialSkippingTags()
 
@@ -521,6 +523,7 @@ proc cborUnpackTypedArray*[T](s: Stream, tag: static[CborTag], arrOut: var seq[T
   let count = totalBytes div elemBytes
   arrOut.setLen(count)
 
+  
   for idx in 0 ..< count:
     let bitsVal = decodeBitsFromStream(info, s)
     arrOut[idx] = decodeTypedArrayValueFromBits[T](info, bitsVal)
