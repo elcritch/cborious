@@ -404,8 +404,8 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
             wire = item
         s.write(wire)
       else:
-        raise newException(CborInvalidArgError,
-          "unsupported element byte width for typed-array element: " & $elemBytes)
+        {.error:
+          "unsupported element byte width for typed-array element: " & $elemBytes.}
 
 proc cborPackTypedArrayConvert*[T](s: Stream, tag: CborTag, data: openArray[T]) =
   ## Encode an RFC 8746 typed array (Section 2) for a homogeneous array of
