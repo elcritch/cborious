@@ -1,9 +1,9 @@
 import std/unittest
 
 import cborious/stream
-import cborious/typedarrays
 import cborious/objects
 import cborious/types
+import cborious/exts/typedarrays
 
 suite "RFC 8746 array tags":
   test "1D int32 roundtrip via tag 40":

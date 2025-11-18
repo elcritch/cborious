@@ -1,11 +1,9 @@
 import std/math
 
-import ./types
-import ./stream
-import ./cbor
-import ./objects
-
-{.push gcsafe.}
+import ../types
+import ../stream
+import ../cbor
+import ../objects
 
 ## RFC 8746 helpers for arrays and multi-dimensional arrays.
 ##
@@ -91,4 +89,3 @@ proc cborUnpackNdArray*[T](s: Stream, shape: var seq[int], dataOut: var seq[T]) 
     if uint8(ord(br)) != 0xff'u8:
       raise newException(CborInvalidHeaderError, "missing break in indefinite array")
 
-{.pop.}
