@@ -84,9 +84,9 @@ else:
   proc store16*(s: Stream, val: uint16) = s.write(val)
   proc store32*(s: Stream, val: uint32) = s.write(val)
   proc store64*(s: Stream, val: uint64) = s.write(val)
-  proc unstore16*(s: Stream): uint16 = cast[uint16](s.readInt16)
-  proc unstore32*(s: Stream): uint32 = cast[uint32](s.readInt32)
-  proc unstore64*(s: Stream): uint64 = cast[uint64](s.readInt64)
+  proc unstore16*(s: Stream): uint16 = cast[uint16](s.readInt16())
+  proc unstore32*(s: Stream): uint32 = cast[uint32](s.readInt32())
+  proc unstore64*(s: Stream): uint64 = cast[uint64](s.readInt64())
 
 # Extended Endianness-aware utility functions
 when system.cpuEndian == littleEndian:
