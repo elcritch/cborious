@@ -224,7 +224,7 @@ suite "RFC 8746 array and typed-number tags":
     # Big-endian float64 typed array (tag 82)
     var sBe = CborStream.init()
     #sBe.cborPackTypedArray(CborTagTaFloat64Be, dataIn)
-    sBe.cborPackTypedArray(dataIn)
+    sBe.cborPackTypedArray(dataIn, bigEndian)
 
     var tagBe: CborTag
     var stBe = CborStream.init(sBe.data)
