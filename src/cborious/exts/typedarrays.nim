@@ -361,51 +361,47 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
 
   block:
     for x in data:
-      let bitsVal = encodeTypedArrayValueBits(info, x)
-      case elemBytes
-      of 1:
-        s.write(char(uint8(bitsVal and 0xff'u64)))
-      of 2:
-        var host = uint16(bitsVal and 0xffff'u64)
-        var wire: uint16
+      var item = x
+      var wire: T
+      when sizeof(T) == 1:
+        s.write(item)
+      elif sizeof(T) == 2:
         when system.cpuEndian == littleEndian:
-          if info.endian == tneBigEndian:
-            swapEndian16(addr(wire), addr(host))
+          when info.endian == tneBigEndian:
+            swapEndian16(addr(wire), addr(item))
           else:
-            wire = host
+            wire = item
         else:
           if info.endian == tneLittleEndian:
-            swapEndian16(addr(wire), addr(host))
+            swapEndian16(addr(wire), addr(item))
           else:
             wire = host
         s.write(wire)
-      of 4:
-        var host = uint32(bitsVal and 0xffff_ffff'u64)
+      elif sizeof(T) == 4:
+        var host = x
         var wire: uint32
         when system.cpuEndian == littleEndian:
-          if info.endian == tneBigEndian:
-            swapEndian32(addr(wire), addr(host))
+          when info.endian == tneBigEndian:
+            swapEndian32(addr(wire), addr(item))
           else:
-            wire = host
+            wire = item
         else:
-          if info.endian == tneLittleEndian:
-            swapEndian32(addr(wire), addr(host))
+          when info.endian == tneBigEndian:
+            swapEndian32(addr(wire), addr(item))
           else:
-            wire = host
+            wire = item
         s.write(wire)
-      of 8:
-        var host = bitsVal
-        var wire: uint64
+      elif sizeof(T) == 8:
         when system.cpuEndian == littleEndian:
-          if info.endian == tneBigEndian:
-            swapEndian64(addr(wire), addr(host))
+          when info.endian == tneBigEndian:
+            swapEndian64(addr(wire), addr(item))
           else:
-            wire = host
+            wire = item
         else:
-          if info.endian == tneLittleEndian:
-            swapEndian64(addr(wire), addr(host))
+          when info.endian == tneBigEndian:
+            swapEndian64(addr(wire), addr(item))
           else:
-            wire = host
+            wire = item
         s.write(wire)
       else:
         raise newException(CborInvalidArgError,
