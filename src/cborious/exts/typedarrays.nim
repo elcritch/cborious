@@ -492,7 +492,7 @@ proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpu
   elif sizeof(T) in [2,4,8]:
     if info.endian == system.cpuEndian:
       let ln = s.readData(arrOut[0].addr, totalBytes)
-      if ln != count:
+      if ln != totalBytes:
         raise newException(CborInvalidHeaderError,
       "typed-array byte string length was incorrect: " & $(ln) & " expectd: " & $(count))
     else:
