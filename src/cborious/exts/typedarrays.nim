@@ -435,8 +435,6 @@ proc cborUnpackTypedArray*[T](s: Stream, tag: CborTag, arrOut: var seq[T]) =
     raise newException(CborInvalidHeaderError,
       "invalid element width in typed-array tag")
 
-  arrOut.setLen(0)
-
   # Definite-length byte string
   let totalBytes = int(s.readAddInfo(ai))
   if totalBytes < 0:
