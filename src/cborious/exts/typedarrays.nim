@@ -368,7 +368,7 @@ proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpu
       let ln = s.readData(arrOut[0].addr, totalBytes)
       if ln != totalBytes:
         raise newException(CborInvalidHeaderError,
-      "typed-array byte string length was incorrect: " & $(ln) & " expectd: " & $(count))
+          "typed-array byte string length was incorrect: " & $(ln) & " expectd: " & $(count))
     else:
       for idx in 0 ..< count:
         arrOut[idx] =
