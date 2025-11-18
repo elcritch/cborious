@@ -56,9 +56,7 @@ type
     tnkSint
     tnkFloat
 
-  TypedNumberEndian* = enum
-    tneBigEndian
-    tneLittleEndian
+  TypedNumberEndian* = system.Endianness
 
   TypedNumberInfo* = object
     ## Parsed information about a typed-number tag in the 64..87 range.
@@ -108,12 +106,12 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
         "typed-number tags support clamped semantics only for uint8 arrays")
 
     when bytes == 4:
-      if endian == tneBigEndian:
+      if endian == bigEndian:
         result = CborTagTaFloat32Be
       else:
         result = CborTagTaFloat32Le
     elif bytes == 8:
-      if endian == tneBigEndian:
+      if endian == bigEndian:
         result = CborTagTaFloat64Be
       else:
         result = CborTagTaFloat64Le
@@ -125,7 +123,7 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         result = CborTagTaUint8Clamped
       else:
-        if endian != tneBigEndian:
+        if endian != bigEndian:
           raise newException(CborInvalidArgError,
             "tag 68 (uint8 clamped) is reserved; plain uint8 typed arrays use big-endian tag 64")
         result = CborTagTaUint8
@@ -134,7 +132,7 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         raise newException(CborInvalidArgError,
           "typed-number tags support clamped semantics only for uint8 arrays")
-      if endian == tneBigEndian:
+      if endian == bigEndian:
         result = CborTagTaUint16Be
       else:
         result = CborTagTaUint16Le
@@ -143,7 +141,7 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         raise newException(CborInvalidArgError,
           "typed-number tags support clamped semantics only for uint8 arrays")
-      if endian == tneBigEndian:
+      if endian == bigEndian:
         result = CborTagTaUint32Be
       else:
         result = CborTagTaUint32Le
@@ -152,7 +150,7 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         raise newException(CborInvalidArgError,
           "typed-number tags support clamped semantics only for uint8 arrays")
-      if endian == tneBigEndian:
+      if endian == bigEndian:
         result = CborTagTaUint64Be
       else:
         result = CborTagTaUint64Le
@@ -167,7 +165,7 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         raise newException(CborInvalidArgError,
           "typed-number tags support clamped semantics only for uint8 arrays")
-      if endian != tneBigEndian:
+      if endian != bigEndian:
         raise newException(CborInvalidArgError,
           "tag 76 (little-endian sint8) is reserved and MUST NOT be used")
       result = CborTagTaSint8
@@ -176,7 +174,7 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         raise newException(CborInvalidArgError,
           "typed-number tags support clamped semantics only for uint8 arrays")
-      if endian == tneBigEndian:
+      if endian == bigEndian:
         result = CborTagTaSint16Be
       else:
         result = CborTagTaSint16Le
@@ -185,7 +183,7 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         raise newException(CborInvalidArgError,
           "typed-number tags support clamped semantics only for uint8 arrays")
-      if endian == tneBigEndian:
+      if endian == bigEndian:
         result = CborTagTaSint32Be
       else:
         result = CborTagTaSint32Le
@@ -194,7 +192,7 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         raise newException(CborInvalidArgError,
           "typed-number tags support clamped semantics only for uint8 arrays")
-      if endian == tneBigEndian:
+      if endian == bigEndian:
         result = CborTagTaSint64Be
       else:
         result = CborTagTaSint64Le
@@ -251,7 +249,7 @@ proc parseTypedNumberTag*(tag: CborTag): TypedNumberInfo =
   else:
     result.kind = tnkFloat
 
-  result.endian = (if eBit == 0'u8: tneBigEndian else: tneLittleEndian)
+  result.endian = (if eBit == 0'u8: bigEndian else: littleEndian)
 
   # Per RFC 8746: bytesPerElement = 2**(f + ll).
   let shiftVal = int(f) + int(ll)
@@ -328,13 +326,15 @@ proc encodeTypedArrayValueBits[T](info: TypedNumberInfo, x: T): uint64 =
     {.error: "Typed arrays currently support only integer and float element types".}
 
 
-proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, tag: CborTag, data: openArray[T]) =
+proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, data: openArray[T], endian = system.cpuEndian) =
   ## Encode an RFC 8746 typed array (Section 2) for a homogeneous array of
   ## numbers, using the supplied tag in the 64..87 range.
   ##
   ## The tag selects the number class (uint/sint/float), endianness, and
   ## element width; this procedure validates that these agree with the
   ## Nim element type T before encoding.
+
+  let tag = typedNumberTagFor[T](endian) == CborTagTaUint8
   let info = parseTypedNumberTag(tag)
   s.cborPackTag(tag)
 
@@ -355,7 +355,7 @@ proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, tag: CborTag, da
       s.write(x)
   elif sizeof(T) in [2,4,8]:
     for x in data:
-      if info.endian == tneBigEndian:
+      if info.endian == bigEndian:
         static:
           echo "PACK SIZE: ", sizeof(T)
         s.storeBE(x)
@@ -384,12 +384,12 @@ proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: in
     copyMem(addr(wire), addr(raw[offset]), 2)
     var host: uint16
     when system.cpuEndian == littleEndian:
-      if info.endian == tneBigEndian:
+      if info.endian == bigEndian:
         swapEndian16(addr(host), addr(wire))
       else:
         host = wire
     else:
-      if info.endian == tneLittleEndian:
+      if info.endian == littleEndian:
         swapEndian16(addr(host), addr(wire))
       else:
         host = wire
@@ -399,12 +399,12 @@ proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: in
     copyMem(addr(wire), addr(raw[offset]), 4)
     var host: uint32
     when system.cpuEndian == littleEndian:
-      if info.endian == tneBigEndian:
+      if info.endian == bigEndian:
         swapEndian32(addr(host), addr(wire))
       else:
         host = wire
     else:
-      if info.endian == tneLittleEndian:
+      if info.endian == littleEndian:
         swapEndian32(addr(host), addr(wire))
       else:
         host = wire
@@ -414,12 +414,12 @@ proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: in
     copyMem(addr(wire), addr(raw[offset]), 8)
     var host: uint64
     when system.cpuEndian == littleEndian:
-      if info.endian == tneBigEndian:
+      if info.endian == bigEndian:
         swapEndian64(addr(host), addr(wire))
       else:
         host = wire
     else:
-      if info.endian == tneLittleEndian:
+      if info.endian == littleEndian:
         swapEndian64(addr(host), addr(wire))
       else:
         host = wire

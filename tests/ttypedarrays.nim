@@ -31,7 +31,7 @@ suite "RFC 8746 array and typed-number tags":
     check info.kind == tnkUint
     check info.bits == 8
     check info.elementBytes == 1
-    check info.endian == tneBigEndian
+    check info.endian == bigEndian
     check not info.clamped
 
     # uint8 Typed Array, clamped arithmetic (tag 68)
@@ -40,7 +40,7 @@ suite "RFC 8746 array and typed-number tags":
     check info.bits == 8
     check info.elementBytes == 1
     # Endianness is redundant for 8-bit but still decodes from the tag.
-    check info.endian == tneLittleEndian
+    check info.endian == littleEndian
     check info.clamped
 
     # sint8 Typed Array (tag 72)
@@ -54,39 +54,39 @@ suite "RFC 8746 array and typed-number tags":
     check info.kind == tnkUint
     check info.bits == 16
     check info.elementBytes == 2
-    check info.endian == tneBigEndian
+    check info.endian == bigEndian
 
     info = parseTypedNumberTag(CborTagTaUint16Le)
     check info.kind == tnkUint
     check info.bits == 16
     check info.elementBytes == 2
-    check info.endian == tneLittleEndian
+    check info.endian == littleEndian
 
     # sint32 big-endian / little-endian (tags 74, 78)
     info = parseTypedNumberTag(CborTagTaSint32Be)
     check info.kind == tnkSint
     check info.bits == 32
     check info.elementBytes == 4
-    check info.endian == tneBigEndian
+    check info.endian == bigEndian
 
     info = parseTypedNumberTag(CborTagTaSint32Le)
     check info.kind == tnkSint
     check info.bits == 32
     check info.elementBytes == 4
-    check info.endian == tneLittleEndian
+    check info.endian == littleEndian
 
     # IEEE 754 binary64, big-endian / little-endian (tags 82, 86)
     info = parseTypedNumberTag(CborTagTaFloat64Be)
     check info.kind == tnkFloat
     check info.bits == 64
     check info.elementBytes == 8
-    check info.endian == tneBigEndian
+    check info.endian == bigEndian
 
     info = parseTypedNumberTag(CborTagTaFloat64Le)
     check info.kind == tnkFloat
     check info.bits == 64
     check info.elementBytes == 8
-    check info.endian == tneLittleEndian
+    check info.endian == littleEndian
 
   test "parseTypedNumberTag rejects reserved/invalid tags":
     # Tag 76 is reserved for little-endian sint8 and MUST NOT be used.
@@ -99,60 +99,60 @@ suite "RFC 8746 array and typed-number tags":
 
   test "typedNumberTagFor maps Nim types to typed-number tags":
     # Unsigned integers
-    check typedNumberTagFor[uint8](tneBigEndian) == CborTagTaUint8
-    check typedNumberTagFor[uint8](tneBigEndian, clamped = true) == CborTagTaUint8Clamped
+    check typedNumberTagFor[uint8](bigEndian) == CborTagTaUint8
+    check typedNumberTagFor[uint8](bigEndian, clamped = true) == CborTagTaUint8Clamped
 
-    check typedNumberTagFor[uint16](tneBigEndian) == CborTagTaUint16Be
-    check typedNumberTagFor[uint16](tneLittleEndian) == CborTagTaUint16Le
+    check typedNumberTagFor[uint16](bigEndian) == CborTagTaUint16Be
+    check typedNumberTagFor[uint16](littleEndian) == CborTagTaUint16Le
 
-    check typedNumberTagFor[uint32](tneBigEndian) == CborTagTaUint32Be
-    check typedNumberTagFor[uint32](tneLittleEndian) == CborTagTaUint32Le
+    check typedNumberTagFor[uint32](bigEndian) == CborTagTaUint32Be
+    check typedNumberTagFor[uint32](littleEndian) == CborTagTaUint32Le
 
-    check typedNumberTagFor[uint64](tneBigEndian) == CborTagTaUint64Be
-    check typedNumberTagFor[uint64](tneLittleEndian) == CborTagTaUint64Le
+    check typedNumberTagFor[uint64](bigEndian) == CborTagTaUint64Be
+    check typedNumberTagFor[uint64](littleEndian) == CborTagTaUint64Le
 
     # Signed integers
-    check typedNumberTagFor[int8](tneBigEndian) == CborTagTaSint8
+    check typedNumberTagFor[int8](bigEndian) == CborTagTaSint8
 
-    check typedNumberTagFor[int16](tneBigEndian) == CborTagTaSint16Be
-    check typedNumberTagFor[int16](tneLittleEndian) == CborTagTaSint16Le
+    check typedNumberTagFor[int16](bigEndian) == CborTagTaSint16Be
+    check typedNumberTagFor[int16](littleEndian) == CborTagTaSint16Le
 
-    check typedNumberTagFor[int32](tneBigEndian) == CborTagTaSint32Be
-    check typedNumberTagFor[int32](tneLittleEndian) == CborTagTaSint32Le
+    check typedNumberTagFor[int32](bigEndian) == CborTagTaSint32Be
+    check typedNumberTagFor[int32](littleEndian) == CborTagTaSint32Le
 
-    check typedNumberTagFor[int64](tneBigEndian) == CborTagTaSint64Be
-    check typedNumberTagFor[int64](tneLittleEndian) == CborTagTaSint64Le
+    check typedNumberTagFor[int64](bigEndian) == CborTagTaSint64Be
+    check typedNumberTagFor[int64](littleEndian) == CborTagTaSint64Le
 
     # Floats
-    check typedNumberTagFor[float64](tneBigEndian) == CborTagTaFloat64Be
-    check typedNumberTagFor[float64](tneLittleEndian) == CborTagTaFloat64Le
+    check typedNumberTagFor[float64](bigEndian) == CborTagTaFloat64Be
+    check typedNumberTagFor[float64](littleEndian) == CborTagTaFloat64Le
 
     # Round-trip sanity check for a few types
     block:
-      let tag = typedNumberTagFor[int32](tneLittleEndian)
+      let tag = typedNumberTagFor[int32](littleEndian)
       let info = parseTypedNumberTag(tag)
       check info.kind == tnkSint
       check info.bits == sizeof(int32) * 8
-      check info.endian == tneLittleEndian
+      check info.endian == littleEndian
 
     block:
-      let tag = typedNumberTagFor[uint16](tneBigEndian)
+      let tag = typedNumberTagFor[uint16](bigEndian)
       let info = parseTypedNumberTag(tag)
       check info.kind == tnkUint
       check info.bits == sizeof(uint16) * 8
-      check info.endian == tneBigEndian
+      check info.endian == bigEndian
 
     block:
-      let tag = typedNumberTagFor[float64](tneLittleEndian)
+      let tag = typedNumberTagFor[float64](littleEndian)
       let info = parseTypedNumberTag(tag)
       check info.kind == tnkFloat
       check info.bits == sizeof(float64) * 8
-      check info.endian == tneLittleEndian
+      check info.endian == littleEndian
 
   test "uint8 typed array via tag 64 (ta-uint8)":
     let dataIn = @[uint8(0), uint8(1), uint8(255)]
     var s = CborStream.init()
-    s.cborPackTypedArray(CborTagTaUint8, dataIn)
+    s.cborPackTypedArray(dataIn)
 
     # Check outer tag and that payload is a byte string
     var st = CborStream.init(s.data)
