@@ -208,7 +208,7 @@ proc encodeTypedArrayValueBits[T](info: TypedNumberInfo, x: T): uint64 =
 
 
 
-proc cborPackTypedArray*[T](s: Stream, tag: CborTag, data: openArray[T]) =
+proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, tag: CborTag, data: openArray[T]) =
   ## Encode an RFC 8746 typed array (Section 2) for a homogeneous array of
   ## numbers, using the supplied tag in the 64..87 range.
   ##
@@ -230,17 +230,14 @@ proc cborPackTypedArray*[T](s: Stream, tag: CborTag, data: openArray[T]) =
   let totalBytes = data.len * info.elementBytes
   cborPackInt(s, uint64(totalBytes), CborMajor.Binary)
 
-  #if info.elementBytes == sizeof(T): 
-  #  x
-  #else:
-  #  encodeTypedArrayValueBits(info, x)
-
-  if sizeof(T) == 1:
+  when sizeof(T) == 1:
     for x in data:
       s.write(x)
   elif sizeof(T) in [2,4,8]:
     for x in data:
       if info.endian == tneBigEndian:
+        static:
+          echo "PACK SIZE: ", sizeof(T)
         s.storeBE(x)
       else:
         s.storeLE(x)

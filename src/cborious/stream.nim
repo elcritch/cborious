@@ -97,7 +97,7 @@ when system.cpuEndian == littleEndian:
       s.store32(cast[uint32](val))
     elif sizeof(T) == 8:
       s.store64(cast[uint64](val))
-    else: {.error: "unsupported size: " & $(sizeof(T)).}
+    else: {.error: "unsupported size: " & $sizeof(T) & " for: " & $(T).}
 
   proc unstoreBE*[T](s: Stream): T =
     when sizeof(T) == 2:
