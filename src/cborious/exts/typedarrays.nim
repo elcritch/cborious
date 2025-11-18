@@ -123,9 +123,9 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         result = CborTagTaUint8Clamped
       else:
-        if endian != bigEndian:
-          raise newException(CborInvalidArgError,
-            "tag 68 (uint8 clamped) is reserved; plain uint8 typed arrays use big-endian tag 64")
+        #if endian != bigEndian:
+        #  raise newException(CborInvalidArgError,
+        #    "tag 68 (uint8 clamped) is reserved; plain uint8 typed arrays use big-endian tag 64")
         result = CborTagTaUint8
 
     elif bytes == 2:
