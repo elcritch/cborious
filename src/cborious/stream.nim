@@ -54,17 +54,17 @@ const defaultCborEncodingMode*: set[EncodingMode] = {CborObjToArray, CborCheckHo
 
 # Endianness-aware utility functions (following msgpack4nim pattern)
 when system.cpuEndian == littleEndian:
-  proc store16*(s: Stream, val: uint16 | int16) =
+  proc store16*(s: Stream, val: uint16) =
     var res: typeof(val)
     swapEndian16(addr(res), unsafeAddr(val))
     s.write(res)
     
-  proc store32*(s: Stream, val: uint32 | int32) =
+  proc store32*(s: Stream, val: uint32) =
     var res: typeof(val)
     swapEndian32(addr(res), unsafeAddr(val))
     s.write(res)
     
-  proc store64*(s: Stream, val: uint64 | uint64) =
+  proc store64*(s: Stream, val: uint64) =
     var res: typeof(val)
     swapEndian64(addr(res), unsafeAddr(val))
     s.write(res)
@@ -90,30 +90,33 @@ else:
 
 # Extended Endianness-aware utility functions
 when system.cpuEndian == littleEndian:
-  proc storeBE16*(s: Stream, val: uint16 | int16) =
-    s.store16(val)
-    
-  proc storeBE32*(s: Stream, val: uint32 | int32) =
-    s.store32(val)
-    
-  proc storeBE64*(s: Stream, val: uint64 | int64) =
-    s.store64(val)
-    
-  proc unstoreBE16*(s: Stream): uint16 =
-    s.unstore16()
-    
-  proc unstoreBE32*(s: Stream): uint32 =
-    s.unstore32()
-    
-  proc unstoreBE64*(s: Stream): uint64 =
-    s.unstore64()
+  proc storeBE*[T](s: Stream, val: T) =
+    when sizeof(T) == 2:
+      s.store16(cast[uint16](val))
+    elif sizeof(T) == 4:
+      s.store32(cast[uint32](val))
+    elif sizeof(T) == 8:
+      s.store64(cast[uint64](val))
+    else: {.error: "unsupported size: " & $(typeof(T)).}
+
+  proc unstoreBE*[T](s: Stream): T =
+    when sizeof(T) == 2:
+      cast[T](s.unstore16(val))
+    elif sizeof(T) == 4:
+      cast[T](s.unstore32(val))
+    elif sizeof(T) == 8:
+      cast[T](s.unstore64(val))
+    else: {.error: "unsupported size: " & $(typeof(T)).}
 else:
-  proc storeBE16*(s: Stream, val: uint16 | int16) = s.write(val)
-  proc storeBE32*(s: Stream, val: uint32 | int32) = s.write(val)
-  proc storeBE64*(s: Stream, val: uint64 | int64) = s.write(val)
-  proc unstoreBE16*(s: Stream): uint16 = cast[uint16](s.readInt16)
-  proc unstoreBE32*(s: Stream): uint32 = cast[uint32](s.readInt32)
-  proc unstoreBE64*(s: Stream): uint64 = cast[uint64](s.readInt64)
+  proc storeBE*(s: Stream, val: T) = s.write(val)
+  proc unstoreBE*[T](s: Stream): T =
+    when sizeof(T) == 2:
+      cast[T](s.unstore16(val))
+    elif sizeof(T) == 4:
+      cast[T](s.unstore32(val))
+    elif sizeof(T) == 8:
+      cast[T](s.unstore64(val))
+    else: {.error: "unsupported size: " & $(typeof(T)).}
 
 # Extended Endianness-aware utility functions
 when system.cpuEndian == bigEndian:

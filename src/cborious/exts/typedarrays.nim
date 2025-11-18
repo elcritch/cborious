@@ -365,36 +365,11 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
       var wire: T
       when sizeof(T) == 1:
         s.write(item)
-      elif sizeof(T) == 2:
+      elif sizeof(T) in [2,4, 8]:
         if info.endian == tneBigEndian:
-          s.storeBE16(item)
+          s.storeBE(item)
         else:
-          s.storeLE16(item)
-      elif sizeof(T) == 4:
-        var wire: uint32
-        when system.cpuEndian == littleEndian:
-          when info.endian == tneBigEndian:
-            swapEndian32(addr(wire), addr(item))
-          else:
-            wire = item
-        else:
-          when info.endian == tneBigEndian:
-            swapEndian32(addr(wire), addr(item))
-          else:
-            wire = item
-        s.write(wire)
-      elif sizeof(T) == 8:
-        when system.cpuEndian == littleEndian:
-          when info.endian == tneBigEndian:
-            swapEndian64(addr(wire), addr(item))
-          else:
-            wire = item
-        else:
-          when info.endian == tneBigEndian:
-            swapEndian64(addr(wire), addr(item))
-          else:
-            wire = item
-        s.write(wire)
+          s.storeLE(item)
       else:
         {.error:
           "unsupported element byte width for typed-array element: " & $elemBytes.}
