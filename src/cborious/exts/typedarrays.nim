@@ -433,7 +433,7 @@ proc decodeTypedArrayValueFromBits[T](info: TypedNumberInfo, bitsVal: uint64): T
   else:
     {.error: "Typed arrays currently support only integer and float element types".}
 
-proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T]) =
+proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpuEndian) =
   ## Decode an RFC 8746 typed array that was encoded with cborPackTypedArray.
   ##
   ## The caller supplies the expected tag, and the element type T must be

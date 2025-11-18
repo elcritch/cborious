@@ -1,5 +1,6 @@
 import std/unittest
 import std/strutils
+import std/endians
 import stew/byteutils
 
 import cborious/stream
@@ -195,7 +196,10 @@ suite "RFC 8746 array and typed-number tags":
     var outBe: seq[int16]
     var stBe2 = CborStream.init(sBe.data)
     #stBe2.cborUnpackTypedArray(CborTagTaSint16Be, outBe)
-    stBe2.cborUnpackTypedArray(outBe)
+    stBe2.cborUnpackTypedArray(outBe, bigEndian)
+    when system.cpuEndian == littleEndian:
+      for item in outBe.mitems():
+        swapEndian16(addr(item), addr(item))
     check outBe == dataIn
 
     # Little-endian
@@ -216,7 +220,10 @@ suite "RFC 8746 array and typed-number tags":
     var outLe: seq[int16]
     var stLe2 = CborStream.init(sLe.data)
     #stLe2.cborUnpackTypedArray(CborTagTaSint16Le, outLe)
-    stLe2.cborUnpackTypedArray(outLe)
+    stLe2.cborUnpackTypedArray(outLe, littleEndian)
+    when system.cpuEndian == bigEndian:
+      for item in outBe.mitems():
+        swapEndian16(addr(item), addr(item))
     check outLe == dataIn
 
   test "float64 typed arrays via tags 82/86 (ta-float64be/le)":
@@ -242,10 +249,12 @@ suite "RFC 8746 array and typed-number tags":
     var outBe: seq[float64]
     var stBe2 = CborStream.init(sBe.data)
     #stBe2.cborUnpackTypedArray(CborTagTaFloat64Be, outBe)
-    stBe2.cborUnpackTypedArray(outBe)
+    stBe2.cborUnpackTypedArray(outBe, bigEndian)
     check outBe.len == dataIn.len
-    for i in 0 ..< outBe.len:
-      check outBe[i] == dataIn[i]
+    when system.cpuEndian == littleEndian:
+      for item in outBe.mitems():
+        swapEndian64(addr(item), addr(item))
+    check outBe == dataIn
 
     # Little-endian float64 typed array (tag 86)
     var sLe = CborStream.init()
@@ -267,7 +276,10 @@ suite "RFC 8746 array and typed-number tags":
     var outLe: seq[float64]
     var stLe2 = CborStream.init(sLe.data)
     #stLe2.cborUnpackTypedArray(CborTagTaFloat64Le, outLe)
-    stLe2.cborUnpackTypedArray(outLe)
+    stLe2.cborUnpackTypedArray(outLe, littleEndian)
     check outLe.len == dataIn.len
-    for i in 0 ..< outLe.len:
-      check outLe[i] == dataIn[i]
+    when system.cpuEndian == bigEndian:
+      for item in outBe.mitems():
+        swapEndian64(addr(item), addr(item))
+    check outLe == dataIn
+

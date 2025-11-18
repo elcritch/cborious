@@ -101,11 +101,11 @@ when system.cpuEndian == littleEndian:
 
   proc unstoreBE*[T](s: Stream, tp: typedesc[T]): T =
     when sizeof(T) == 2:
-      result = cast[T](s.unstore16())
+      cast[T](s.readInt16)
     elif sizeof(T) == 4:
-      result = cast[T](s.unstore32())
+      cast[T](s.readInt32)
     elif sizeof(T) == 8:
-      result = cast[T](s.unstore64())
+      cast[T](s.readInt64)
     else: {.error: "unsupported size: " & $(sizeof(T)).}
 else:
   proc storeBE*[T](s: Stream, val: T) = s.write(val)
