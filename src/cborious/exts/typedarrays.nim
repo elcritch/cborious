@@ -1,4 +1,5 @@
 import std/math
+import std/endians
 
 import ../types
 import ../stream
@@ -206,37 +207,6 @@ proc encodeTypedArrayValueBits[T](info: TypedNumberInfo, x: T): uint64 =
     {.error: "Typed arrays currently support only integer and float element types".}
 
 
-proc appendBitsAsBytes(outBytes: var seq[uint8], offset: int,
-                        info: TypedNumberInfo, bitsVal: uint64) =
-  ## Append the low info.bits bits of bitsVal into outBytes at the given
-  ## offset, in the endianness specified by info.endian.
-  let bytes = info.elementBytes
-  if bytes <= 0 or bytes > 8:
-    raise newException(CborInvalidArgError,
-      "unsupported element byte width for typed-array element: " & $bytes)
-
-  if outBytes.len < offset + bytes:
-    raise newException(CborInvalidArgError,
-      "typed-array byte buffer too small for element write")
-
-  if info.endian == tneBigEndian:
-    var shift = (bytes - 1) * 8
-    var i = 0
-    while i < bytes:
-      let b = uint8((bitsVal shr shift) and 0xff'u64)
-      outBytes[offset + i] = b
-      dec shift, 8
-      inc i
-  else:
-    var shift = 0
-    var i = 0
-    while i < bytes:
-      let b = uint8((bitsVal shr shift) and 0xff'u64)
-      outBytes[offset + i] = b
-      inc shift, 8
-      inc i
-
-
 proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: int): uint64 =
   ## Decode info.bits bits from raw[offset ..< offset+elementBytes] into a
   ## host-endian unsigned integer value.
@@ -247,23 +217,57 @@ proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: in
   if offset < 0 or offset + bytes > raw.len:
     raise newException(CborInvalidHeaderError,
       "typed-array element extends past end of byte string")
-
-  var v: uint64 = 0
-  if info.endian == tneBigEndian:
-    var i = 0
-    while i < bytes:
-      let b = uint64(raw[offset + i])
-      v = (v shl 8) or b
-      inc i
+  case bytes
+  of 1:
+    result = uint64(raw[offset])
+  of 2:
+    var wire: uint16
+    copyMem(addr(wire), addr(raw[offset]), 2)
+    var host: uint16
+    when system.cpuEndian == littleEndian:
+      if info.endian == tneBigEndian:
+        swapEndian16(addr(host), addr(wire))
+      else:
+        host = wire
+    else:
+      if info.endian == tneLittleEndian:
+        swapEndian16(addr(host), addr(wire))
+      else:
+        host = wire
+    result = uint64(host)
+  of 4:
+    var wire: uint32
+    copyMem(addr(wire), addr(raw[offset]), 4)
+    var host: uint32
+    when system.cpuEndian == littleEndian:
+      if info.endian == tneBigEndian:
+        swapEndian32(addr(host), addr(wire))
+      else:
+        host = wire
+    else:
+      if info.endian == tneLittleEndian:
+        swapEndian32(addr(host), addr(wire))
+      else:
+        host = wire
+    result = uint64(host)
+  of 8:
+    var wire: uint64
+    copyMem(addr(wire), addr(raw[offset]), 8)
+    var host: uint64
+    when system.cpuEndian == littleEndian:
+      if info.endian == tneBigEndian:
+        swapEndian64(addr(host), addr(wire))
+      else:
+        host = wire
+    else:
+      if info.endian == tneLittleEndian:
+        swapEndian64(addr(host), addr(wire))
+      else:
+        host = wire
+    result = host
   else:
-    var shift = 0
-    var i = 0
-    while i < bytes:
-      let b = uint64(raw[offset + i])
-      v = v or (b shl shift)
-      inc i
-      inc shift, 8
-  result = v
+    raise newException(CborInvalidHeaderError,
+      "unsupported element byte width for typed-array decode: " & $bytes)
 
 
 proc decodeTypedArrayValueFromBits[T](info: TypedNumberInfo, bitsVal: uint64): T =
@@ -358,22 +362,54 @@ proc cborPackTypedArray*[T](s: Stream, tag: CborTag, data: openArray[T]) =
 
   for x in data:
     let bitsVal = encodeTypedArrayValueBits(info, x)
-    if info.endian == tneBigEndian:
-      var shift = (elemBytes - 1) * 8
-      var i = 0
-      while i < elemBytes:
-        let b = uint8((bitsVal shr shift) and 0xff'u64)
-        s.write(char(b))
-        dec shift, 8
-        inc i
+    case elemBytes
+    of 1:
+      s.write(char(uint8(bitsVal and 0xff'u64)))
+    of 2:
+      var host = uint16(bitsVal and 0xffff'u64)
+      var wire: uint16
+      when system.cpuEndian == littleEndian:
+        if info.endian == tneBigEndian:
+          swapEndian16(addr(wire), addr(host))
+        else:
+          wire = host
+      else:
+        if info.endian == tneLittleEndian:
+          swapEndian16(addr(wire), addr(host))
+        else:
+          wire = host
+      s.write(wire)
+    of 4:
+      var host = uint32(bitsVal and 0xffff_ffff'u64)
+      var wire: uint32
+      when system.cpuEndian == littleEndian:
+        if info.endian == tneBigEndian:
+          swapEndian32(addr(wire), addr(host))
+        else:
+          wire = host
+      else:
+        if info.endian == tneLittleEndian:
+          swapEndian32(addr(wire), addr(host))
+        else:
+          wire = host
+      s.write(wire)
+    of 8:
+      var host = bitsVal
+      var wire: uint64
+      when system.cpuEndian == littleEndian:
+        if info.endian == tneBigEndian:
+          swapEndian64(addr(wire), addr(host))
+        else:
+          wire = host
+      else:
+        if info.endian == tneLittleEndian:
+          swapEndian64(addr(wire), addr(host))
+        else:
+          wire = host
+      s.write(wire)
     else:
-      var shift = 0
-      var i = 0
-      while i < elemBytes:
-        let b = uint8((bitsVal shr shift) and 0xff'u64)
-        s.write(char(b))
-        inc shift, 8
-        inc i
+      raise newException(CborInvalidArgError,
+        "unsupported element byte width for typed-array element: " & $elemBytes)
 
 
 proc cborUnpackTypedArray*[T](s: Stream, tag: CborTag, arrOut: var seq[T]) =
@@ -433,7 +469,7 @@ proc cborUnpackTypedArray*[T](s: Stream, tag: CborTag, arrOut: var seq[T]) =
       raise newException(CborInvalidHeaderError,
         "unsupported element byte width for typed-array decode: " & $elemBytes)
 
-    var buf: array[8, uint8]
+    var buf: array[8, byte]
     var bufFill = 0
 
     while true:
@@ -453,25 +489,11 @@ proc cborUnpackTypedArray*[T](s: Stream, tag: CborTag, arrOut: var seq[T]) =
       var j = 0
       while j < chunkLen:
         let ch = s.readChar()
-        let b8 = uint8(ord(ch))
-        buf[bufFill] = b8
+        buf[bufFill] = byte(ord(ch))
         inc bufFill
 
         if bufFill == elemBytes:
-          var bitsVal: uint64 = 0
-          if info.endian == tneBigEndian:
-            var i = 0
-            while i < elemBytes:
-              bitsVal = (bitsVal shl 8) or uint64(buf[i])
-              inc i
-          else:
-            var shift = 0
-            var i = 0
-            while i < elemBytes:
-              bitsVal = bitsVal or (uint64(buf[i]) shl shift)
-              inc i
-              inc shift, 8
-
+          let bitsVal = decodeBitsFromBytes(info, buf, 0)
           arrOut.add(decodeTypedArrayValueFromBits[T](info, bitsVal))
           bufFill = 0
 
@@ -509,33 +531,19 @@ proc cborUnpackTypedArray*[T](s: Stream, tag: CborTag, arrOut: var seq[T]) =
     let count = totalBytes div elemBytes
     arrOut.setLen(count)
 
-    var buf: array[8, uint8]
+    var buf: array[8, byte]
     var bufFill = 0
     var idx = 0
     var remaining = totalBytes
 
     while remaining > 0:
       let ch = s.readChar()
-      let b8 = uint8(ord(ch))
-      buf[bufFill] = b8
+      buf[bufFill] = byte(ord(ch))
       inc bufFill
       dec remaining
 
       if bufFill == elemBytes:
-        var bitsVal: uint64 = 0
-        if info.endian == tneBigEndian:
-          var i = 0
-          while i < elemBytes:
-            bitsVal = (bitsVal shl 8) or uint64(buf[i])
-            inc i
-        else:
-          var shift = 0
-          var i = 0
-          while i < elemBytes:
-            bitsVal = bitsVal or (uint64(buf[i]) shl shift)
-            inc i
-            inc shift, 8
-
+        let bitsVal = decodeBitsFromBytes(info, buf, 0)
         arrOut[idx] = decodeTypedArrayValueFromBits[T](info, bitsVal)
         inc idx
         bufFill = 0
