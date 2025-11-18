@@ -366,19 +366,11 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
       when sizeof(T) == 1:
         s.write(item)
       elif sizeof(T) == 2:
-        when system.cpuEndian == littleEndian:
-          when info.endian == tneBigEndian:
-            swapEndian16(addr(wire), addr(item))
-          else:
-            wire = item
+        if info.endian == tneBigEndian:
+          s.storeBE16(item)
         else:
-          if info.endian == tneLittleEndian:
-            swapEndian16(addr(wire), addr(item))
-          else:
-            wire = host
-        s.write(wire)
+          s.storeLE16(item)
       elif sizeof(T) == 4:
-        var host = x
         var wire: uint32
         when system.cpuEndian == littleEndian:
           when info.endian == tneBigEndian:
