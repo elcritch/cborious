@@ -361,15 +361,13 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
 
   block:
     for x in data:
-      var item = x
-      var wire: T
       when sizeof(T) == 1:
-        s.write(item)
+        s.write(x)
       elif sizeof(T) in [2,4, 8]:
         if info.endian == tneBigEndian:
-          s.storeBE(item)
+          s.storeBE(x)
         else:
-          s.storeLE(item)
+          s.storeLE(x)
       else:
         {.error:
           "unsupported element byte width for typed-array element: " & $elemBytes.}
