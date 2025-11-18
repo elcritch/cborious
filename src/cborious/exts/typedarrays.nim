@@ -335,7 +335,7 @@ proc decodeTypedArrayValueFromBits[T](info: TypedNumberInfo, bitsVal: uint64): T
   else:
     {.error: "Typed arrays currently support only integer and float element types".}
 
-proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) =
+proc cborPackTypedArray*[T](s: Stream, tag: CborTag, data: openArray[T]) =
   ## Encode an RFC 8746 typed array (Section 2) for a homogeneous array of
   ## numbers, using the supplied tag in the 64..87 range.
   ##
@@ -345,9 +345,9 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
   const info = parseTypedNumberTag(tag)
   s.cborPackTag(tag)
 
-  when info.elementBytes <= 0 or info.elementBytes > 8:
-    {.error: 
-      "unsupported element byte width for typed-array element: " & $elementBytes.}
+  if info.elementBytes <= 0 or info.elementBytes > 8:
+    raise newException(CborInvalidArgError,
+      "unsupported element byte width for typed-array element: " & $elementBytes)
 
   if data.len == 0:
     # Empty typed array: still a valid byte string with length 0.
@@ -357,9 +357,10 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
   let totalBytes = data.len * info.elementBytes
   cborPackInt(s, uint64(totalBytes), CborMajor.Binary)
 
-  block:
-    for x in data:
-      let item = x
+  for x in data:
+      let item =
+        when 
+        x
       when sizeof(T) == 1:
         s.write(item)
       elif sizeof(T) in [2,4, 8]:
