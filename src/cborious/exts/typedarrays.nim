@@ -437,113 +437,46 @@ proc cborUnpackTypedArray*[T](s: Stream, tag: CborTag, arrOut: var seq[T]) =
 
   arrOut.setLen(0)
 
-  if ai == AiIndef:
-    # Indefinite-length byte string: concatenate binary chunks until break.
-    if elemBytes > 8:
-      # Skip payload to keep stream position consistent, then error.
-      var totalBytes = 0
-      while true:
-        let pos = s.getPosition()
-        let b = s.readChar()
-        if uint8(ord(b)) == 0xff'u8:
-          break
-        s.setPosition(pos)
-        let (m2, ai2) = s.readInitial()
-        if m2 != CborMajor.Binary or ai2 == AiIndef:
-          raise newException(CborInvalidHeaderError,
-            "invalid chunk in indefinite string")
-        let chunkLen = int(s.readAddInfo(ai2))
-        if chunkLen < 0:
-          raise newException(CborInvalidHeaderError, "negative length")
-        totalBytes += chunkLen
-        var j = 0
-        while j < chunkLen:
-          discard s.readChar()
-          inc j
+  # Definite-length byte string
+  let totalBytes = int(s.readAddInfo(ai))
+  if totalBytes < 0:
+    raise newException(CborInvalidHeaderError, "negative length")
+  if totalBytes == 0:
+    return
 
-      if totalBytes == 0:
-        return
-      if totalBytes mod elemBytes != 0:
-        raise newException(CborInvalidHeaderError,
-          "typed-array byte string length not a multiple of element size")
-      raise newException(CborInvalidHeaderError,
-        "unsupported element byte width for typed-array decode: " & $elemBytes)
+  if totalBytes mod elemBytes != 0:
+    # Consume payload to leave stream at end of the byte string.
+    var skipped = 0
+    while skipped < totalBytes:
+      discard s.readChar()
+      inc skipped
+    raise newException(CborInvalidHeaderError,
+      "typed-array byte string length not a multiple of element size")
 
-    var buf: array[8, byte]
-    var bufFill = 0
+  if elemBytes > 8:
+    var skipped = 0
+    while skipped < totalBytes:
+      discard s.readChar()
+      inc skipped
+    raise newException(CborInvalidHeaderError,
+      "unsupported element byte width for typed-array decode: " & $elemBytes)
 
-    while true:
-      let pos = s.getPosition()
-      let b = s.readChar()
-      if uint8(ord(b)) == 0xff'u8:
-        break
-      s.setPosition(pos)
-      let (m2, ai2) = s.readInitial()
-      if m2 != CborMajor.Binary or ai2 == AiIndef:
-        raise newException(CborInvalidHeaderError,
-          "invalid chunk in indefinite string")
-      let chunkLen = int(s.readAddInfo(ai2))
-      if chunkLen < 0:
-        raise newException(CborInvalidHeaderError, "negative length")
+  let count = totalBytes div elemBytes
+  arrOut.setLen(count)
 
-      var j = 0
-      while j < chunkLen:
-        let ch = s.readChar()
-        buf[bufFill] = byte(ord(ch))
-        inc bufFill
+  var buf: array[8, byte]
+  var bufFill = 0
+  var idx = 0
+  var remaining = totalBytes
 
-        if bufFill == elemBytes:
-          let bitsVal = decodeBitsFromBytes(info, buf, 0)
-          arrOut.add(decodeTypedArrayValueFromBits[T](info, bitsVal))
-          bufFill = 0
+  while remaining > 0:
+    let ch = s.readChar()
+    buf[bufFill] = byte(ord(ch))
+    inc bufFill
+    dec remaining
 
-        inc j
-
-    if bufFill != 0:
-      raise newException(CborInvalidHeaderError,
-        "typed-array byte string length not a multiple of element size")
-
-  else:
-    # Definite-length byte string
-    let totalBytes = int(s.readAddInfo(ai))
-    if totalBytes < 0:
-      raise newException(CborInvalidHeaderError, "negative length")
-    if totalBytes == 0:
-      return
-
-    if totalBytes mod elemBytes != 0:
-      # Consume payload to leave stream at end of the byte string.
-      var skipped = 0
-      while skipped < totalBytes:
-        discard s.readChar()
-        inc skipped
-      raise newException(CborInvalidHeaderError,
-        "typed-array byte string length not a multiple of element size")
-
-    if elemBytes > 8:
-      var skipped = 0
-      while skipped < totalBytes:
-        discard s.readChar()
-        inc skipped
-      raise newException(CborInvalidHeaderError,
-        "unsupported element byte width for typed-array decode: " & $elemBytes)
-
-    let count = totalBytes div elemBytes
-    arrOut.setLen(count)
-
-    var buf: array[8, byte]
-    var bufFill = 0
-    var idx = 0
-    var remaining = totalBytes
-
-    while remaining > 0:
-      let ch = s.readChar()
-      buf[bufFill] = byte(ord(ch))
-      inc bufFill
-      dec remaining
-
-      if bufFill == elemBytes:
-        let bitsVal = decodeBitsFromBytes(info, buf, 0)
-        arrOut[idx] = decodeTypedArrayValueFromBits[T](info, bitsVal)
-        inc idx
-        bufFill = 0
+    if bufFill == elemBytes:
+      let bitsVal = decodeBitsFromBytes(info, buf, 0)
+      arrOut[idx] = decodeTypedArrayValueFromBits[T](info, bitsVal)
+      inc idx
+      bufFill = 0
