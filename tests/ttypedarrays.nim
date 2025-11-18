@@ -1,9 +1,26 @@
 import std/unittest
+import std/strutils
+import stew/byteutils
 
 import cborious/stream
 import cborious/objects
 import cborious/types
+import cborious/edn
+
 import cborious/exts/typedarrays
+
+proc toHexPretty(bs: openArray[byte]): string =
+  let x = bs.toHex().toUpperAscii()
+  for i, c in x:
+    if i > 0 and (i) mod 2 == 0:
+      result.add(' ')
+    result.add(c)
+
+proc toDecPretty(bs: openArray[byte]): string =
+  for i, c in bs:
+    #if i > 0 and (i) mod 2 == 0:
+    result.add(' ')
+    result.add($(c.int))
 
 suite "RFC 8746 array tags":
   test "1D int32 roundtrip via tag 40":
@@ -32,6 +49,11 @@ suite "RFC 8746 array tags":
     var tag: CborTag
     discard st.readOneTag(tag)
     check tag == CborTagArray
+
+    echo "DATA: ", s.data.repr()
+    echo "EDN: ", ednDump(s.data)
+    echo "HEX: ", s.data.toBytes().toHexPretty()
+    echo "DEC: ", s.data.toBytes().toDecPretty()
 
     var st2 = CborStream.init(s.data)
     var outArr: seq[float64]
