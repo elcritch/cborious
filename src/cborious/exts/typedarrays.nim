@@ -345,29 +345,28 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
   const info = parseTypedNumberTag(tag)
   s.cborPackTag(tag)
 
-  const elemBytes = info.elementBytes
-
-  when elemBytes <= 0 or elemBytes > 8:
+  when info.elementBytes <= 0 or info.elementBytes > 8:
     {.error: 
-      "unsupported element byte width for typed-array element: " & $elemBytes.}
+      "unsupported element byte width for typed-array element: " & $elementBytes.}
 
   if data.len == 0:
     # Empty typed array: still a valid byte string with length 0.
     cborPackInt(s, 0'u64, CborMajor.Binary)
     return
 
-  let totalBytes = data.len * elemBytes
+  let totalBytes = data.len * info.elementBytes
   cborPackInt(s, uint64(totalBytes), CborMajor.Binary)
 
   block:
     for x in data:
+      let item = x
       when sizeof(T) == 1:
-        s.write(x)
+        s.write(item)
       elif sizeof(T) in [2,4, 8]:
         if info.endian == tneBigEndian:
-          s.storeBE(x)
+          s.storeBE(item)
         else:
-          s.storeLE(x)
+          s.storeLE(item)
       else:
         {.error:
           "unsupported element byte width for typed-array element: " & $elemBytes.}
