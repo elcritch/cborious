@@ -84,6 +84,127 @@ template assertShapeMatches(lenData: int, shape: openArray[int]) =
   if prod != lenData:
       raise newException(CborInvalidArgError, "shape does not match data length")
 
+proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
+    endian: TypedNumberEndian; clamped = false
+  ): CborTag =
+  ## Select the RFC 8746 typed-number tag in the 64..87 range corresponding
+  ## to the Nim numeric type `T`, the desired endianness, and (for uint8)
+  ## whether clamped arithmetic is requested.
+  ##
+  ## The result is suitable for use with `cborPackTypedArray` and
+  ## `cborPackTypedArrayConvert`.  Passing the returned tag to
+  ## `parseTypedNumberTag` yields a `TypedNumberInfo` whose `kind`,
+  ## `bits`, `endian`, and `clamped` fields match the requested
+  ## combination, except that 8-bit integers have no little-endian
+  ## variants (tag 76 is reserved and MUST NOT be used).
+
+  when T is SomeFloat:
+    const bytes = sizeof(T)
+    when bytes != 4 and bytes != 8:
+      {.error: "typed-number tags currently support only 32-bit and 64-bit float element types".}
+
+    if clamped:
+      raise newException(CborInvalidArgError,
+        "typed-number tags support clamped semantics only for uint8 arrays")
+
+    when bytes == 4:
+      if endian == tneBigEndian:
+        result = CborTagTaFloat32Be
+      else:
+        result = CborTagTaFloat32Le
+    elif bytes == 8:
+      if endian == tneBigEndian:
+        result = CborTagTaFloat64Be
+      else:
+        result = CborTagTaFloat64Le
+
+  elif T is SomeUnsignedInt:
+    const bytes = sizeof(T)
+
+    when bytes == 1:
+      if clamped:
+        result = CborTagTaUint8Clamped
+      else:
+        if endian != tneBigEndian:
+          raise newException(CborInvalidArgError,
+            "tag 68 (uint8 clamped) is reserved; plain uint8 typed arrays use big-endian tag 64")
+        result = CborTagTaUint8
+
+    elif bytes == 2:
+      if clamped:
+        raise newException(CborInvalidArgError,
+          "typed-number tags support clamped semantics only for uint8 arrays")
+      if endian == tneBigEndian:
+        result = CborTagTaUint16Be
+      else:
+        result = CborTagTaUint16Le
+
+    elif bytes == 4:
+      if clamped:
+        raise newException(CborInvalidArgError,
+          "typed-number tags support clamped semantics only for uint8 arrays")
+      if endian == tneBigEndian:
+        result = CborTagTaUint32Be
+      else:
+        result = CborTagTaUint32Le
+
+    elif bytes == 8:
+      if clamped:
+        raise newException(CborInvalidArgError,
+          "typed-number tags support clamped semantics only for uint8 arrays")
+      if endian == tneBigEndian:
+        result = CborTagTaUint64Be
+      else:
+        result = CborTagTaUint64Le
+
+    else:
+      {.error: "typed-number tags currently support only 8,16,32,64-bit unsigned integer element types".}
+
+  elif T is SomeSignedInt:
+    const bytes = sizeof(T)
+
+    when bytes == 1:
+      if clamped:
+        raise newException(CborInvalidArgError,
+          "typed-number tags support clamped semantics only for uint8 arrays")
+      if endian != tneBigEndian:
+        raise newException(CborInvalidArgError,
+          "tag 76 (little-endian sint8) is reserved and MUST NOT be used")
+      result = CborTagTaSint8
+
+    elif bytes == 2:
+      if clamped:
+        raise newException(CborInvalidArgError,
+          "typed-number tags support clamped semantics only for uint8 arrays")
+      if endian == tneBigEndian:
+        result = CborTagTaSint16Be
+      else:
+        result = CborTagTaSint16Le
+
+    elif bytes == 4:
+      if clamped:
+        raise newException(CborInvalidArgError,
+          "typed-number tags support clamped semantics only for uint8 arrays")
+      if endian == tneBigEndian:
+        result = CborTagTaSint32Be
+      else:
+        result = CborTagTaSint32Le
+
+    elif bytes == 8:
+      if clamped:
+        raise newException(CborInvalidArgError,
+          "typed-number tags support clamped semantics only for uint8 arrays")
+      if endian == tneBigEndian:
+        result = CborTagTaSint64Be
+      else:
+        result = CborTagTaSint64Le
+
+    else:
+      {.error: "typed-number tags currently support only 8,16,32,64-bit signed integer element types".}
+
+  else:
+    {.error: "typedNumberTagFor: typed arrays currently support only integer and float element types".}
+
 proc parseTypedNumberTag*(tag: CborTag): TypedNumberInfo =
   ## Parse an RFC 8746 typed-number tag in the range 64..87 (Section 2.1).
   ##

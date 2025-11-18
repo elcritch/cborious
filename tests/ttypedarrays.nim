@@ -97,6 +97,58 @@ suite "RFC 8746 array and typed-number tags":
     expect CborInvalidArgError:
       discard parseTypedNumberTag(CborTag(40'u64))
 
+  test "typedNumberTagFor maps Nim types to typed-number tags":
+    # Unsigned integers
+    check typedNumberTagFor[uint8](tneBigEndian) == CborTagTaUint8
+    check typedNumberTagFor[uint8](tneBigEndian, clamped = true) == CborTagTaUint8Clamped
+
+    check typedNumberTagFor[uint16](tneBigEndian) == CborTagTaUint16Be
+    check typedNumberTagFor[uint16](tneLittleEndian) == CborTagTaUint16Le
+
+    check typedNumberTagFor[uint32](tneBigEndian) == CborTagTaUint32Be
+    check typedNumberTagFor[uint32](tneLittleEndian) == CborTagTaUint32Le
+
+    check typedNumberTagFor[uint64](tneBigEndian) == CborTagTaUint64Be
+    check typedNumberTagFor[uint64](tneLittleEndian) == CborTagTaUint64Le
+
+    # Signed integers
+    check typedNumberTagFor[int8](tneBigEndian) == CborTagTaSint8
+
+    check typedNumberTagFor[int16](tneBigEndian) == CborTagTaSint16Be
+    check typedNumberTagFor[int16](tneLittleEndian) == CborTagTaSint16Le
+
+    check typedNumberTagFor[int32](tneBigEndian) == CborTagTaSint32Be
+    check typedNumberTagFor[int32](tneLittleEndian) == CborTagTaSint32Le
+
+    check typedNumberTagFor[int64](tneBigEndian) == CborTagTaSint64Be
+    check typedNumberTagFor[int64](tneLittleEndian) == CborTagTaSint64Le
+
+    # Floats
+    check typedNumberTagFor[float64](tneBigEndian) == CborTagTaFloat64Be
+    check typedNumberTagFor[float64](tneLittleEndian) == CborTagTaFloat64Le
+
+    # Round-trip sanity check for a few types
+    block:
+      let tag = typedNumberTagFor[int32](tneLittleEndian)
+      let info = parseTypedNumberTag(tag)
+      check info.kind == tnkSint
+      check info.bits == sizeof(int32) * 8
+      check info.endian == tneLittleEndian
+
+    block:
+      let tag = typedNumberTagFor[uint16](tneBigEndian)
+      let info = parseTypedNumberTag(tag)
+      check info.kind == tnkUint
+      check info.bits == sizeof(uint16) * 8
+      check info.endian == tneBigEndian
+
+    block:
+      let tag = typedNumberTagFor[float64](tneLittleEndian)
+      let info = parseTypedNumberTag(tag)
+      check info.kind == tnkFloat
+      check info.bits == sizeof(float64) * 8
+      check info.endian == tneLittleEndian
+
   test "uint8 typed array via tag 64 (ta-uint8)":
     let dataIn = @[uint8(0), uint8(1), uint8(255)]
     var s = CborStream.init()
