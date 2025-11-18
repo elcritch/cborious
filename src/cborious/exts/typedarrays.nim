@@ -207,7 +207,7 @@ proc encodeTypedArrayValueBits[T](info: static TypedNumberInfo, x: T): uint64 =
     {.error: "Typed arrays currently support only integer and float element types".}
 
 
-proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: int): uint64 =
+proc decodeBitsFromBytes(info: const TypedNumberInfo, raw: openArray[byte], offset: int): uint64 =
   ## Decode info.bits bits from raw[offset ..< offset+elementBytes] into a
   ## host-endian unsigned integer value.
   let bytes = info.elementBytes
@@ -359,56 +359,57 @@ proc cborPackTypedArray*[T](s: Stream, tag: static CborTag, data: openArray[T]) 
   let totalBytes = data.len * elemBytes
   cborPackInt(s, uint64(totalBytes), CborMajor.Binary)
 
-  for x in data:
-    let bitsVal = encodeTypedArrayValueBits(info, x)
-    case elemBytes
-    of 1:
-      s.write(char(uint8(bitsVal and 0xff'u64)))
-    of 2:
-      var host = uint16(bitsVal and 0xffff'u64)
-      var wire: uint16
-      when system.cpuEndian == littleEndian:
-        if info.endian == tneBigEndian:
-          swapEndian16(addr(wire), addr(host))
+  block:
+    for x in data:
+      let bitsVal = encodeTypedArrayValueBits(info, x)
+      case elemBytes
+      of 1:
+        s.write(char(uint8(bitsVal and 0xff'u64)))
+      of 2:
+        var host = uint16(bitsVal and 0xffff'u64)
+        var wire: uint16
+        when system.cpuEndian == littleEndian:
+          if info.endian == tneBigEndian:
+            swapEndian16(addr(wire), addr(host))
+          else:
+            wire = host
         else:
-          wire = host
+          if info.endian == tneLittleEndian:
+            swapEndian16(addr(wire), addr(host))
+          else:
+            wire = host
+        s.write(wire)
+      of 4:
+        var host = uint32(bitsVal and 0xffff_ffff'u64)
+        var wire: uint32
+        when system.cpuEndian == littleEndian:
+          if info.endian == tneBigEndian:
+            swapEndian32(addr(wire), addr(host))
+          else:
+            wire = host
+        else:
+          if info.endian == tneLittleEndian:
+            swapEndian32(addr(wire), addr(host))
+          else:
+            wire = host
+        s.write(wire)
+      of 8:
+        var host = bitsVal
+        var wire: uint64
+        when system.cpuEndian == littleEndian:
+          if info.endian == tneBigEndian:
+            swapEndian64(addr(wire), addr(host))
+          else:
+            wire = host
+        else:
+          if info.endian == tneLittleEndian:
+            swapEndian64(addr(wire), addr(host))
+          else:
+            wire = host
+        s.write(wire)
       else:
-        if info.endian == tneLittleEndian:
-          swapEndian16(addr(wire), addr(host))
-        else:
-          wire = host
-      s.write(wire)
-    of 4:
-      var host = uint32(bitsVal and 0xffff_ffff'u64)
-      var wire: uint32
-      when system.cpuEndian == littleEndian:
-        if info.endian == tneBigEndian:
-          swapEndian32(addr(wire), addr(host))
-        else:
-          wire = host
-      else:
-        if info.endian == tneLittleEndian:
-          swapEndian32(addr(wire), addr(host))
-        else:
-          wire = host
-      s.write(wire)
-    of 8:
-      var host = bitsVal
-      var wire: uint64
-      when system.cpuEndian == littleEndian:
-        if info.endian == tneBigEndian:
-          swapEndian64(addr(wire), addr(host))
-        else:
-          wire = host
-      else:
-        if info.endian == tneLittleEndian:
-          swapEndian64(addr(wire), addr(host))
-        else:
-          wire = host
-      s.write(wire)
-    else:
-      raise newException(CborInvalidArgError,
-        "unsupported element byte width for typed-array element: " & $elemBytes)
+        raise newException(CborInvalidArgError,
+          "unsupported element byte width for typed-array element: " & $elemBytes)
 
 proc cborPackTypedArrayConvert*[T](s: Stream, tag: CborTag, data: openArray[T]) =
   ## Encode an RFC 8746 typed array (Section 2) for a homogeneous array of
