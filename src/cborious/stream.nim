@@ -99,17 +99,17 @@ when system.cpuEndian == littleEndian:
       s.store64(cast[uint64](val))
     else: {.error: "unsupported size: " & $sizeof(T) & " for: " & $(T).}
 
-  proc unstoreBE*[T](s: Stream): T =
+  proc unstoreBE*[T](s: Stream, tp: typedesc[T]): T =
     when sizeof(T) == 2:
-      cast[T](s.unstore16())
+      result = cast[T](s.unstore16())
     elif sizeof(T) == 4:
-      cast[T](s.unstore32())
+      result = cast[T](s.unstore32())
     elif sizeof(T) == 8:
-      cast[T](s.unstore64())
+      result = cast[T](s.unstore64())
     else: {.error: "unsupported size: " & $(sizeof(T)).}
 else:
   proc storeBE*[T](s: Stream, val: T) = s.write(val)
-  proc unstoreBE*[T](s: Stream): T =
+  proc unstoreBE*[T](s: Stream, tp: typedesc[T]): T =
     when sizeof(T) == 2:
       cast[T](s.unstore16())
     elif sizeof(T) == 4:
@@ -128,7 +128,7 @@ when system.cpuEndian == bigEndian:
       s.store64(cast[uint64](val))
     else: {.error: "unsupported size: " & $(sizeof(T)).}
 
-  proc unstoreLE*[T](s: Stream): T =
+  proc unstoreLE*[T](s: Stream, tp: typedesc[T]): T =
     when sizeof(T) == 2:
       cast[T](s.unstore16())
     elif sizeof(T) == 4:
@@ -138,7 +138,7 @@ when system.cpuEndian == bigEndian:
     else: {.error: "unsupported size: " & $(sizeof(T)).}
 else:
   proc storeLE*[T](s: Stream, val: T) = s.write(val)
-  proc unstoreLE*[T](s: Stream): T =
+  proc unstoreLE*[T](s: Stream, tp: typedesc[T]): T =
     when sizeof(T) == 2:
       cast[T](s.unstore16())
     elif sizeof(T) == 4:

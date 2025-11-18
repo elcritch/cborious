@@ -368,44 +368,6 @@ proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: in
     raise newException(CborInvalidHeaderError,
       "unsupported element byte width for typed-array decode: " & $bytes)
 
-proc decodeBitsFromStream(info: TypedNumberInfo, s: Stream): uint64 =
-  ## Decode info.bits bits for a single typed-array element directly from
-  ## the underlying stream, using the generic unstoreBE/unstoreLE helpers
-  ## to handle endianness and word size.
-  let bytes = info.elementBytes
-  if bytes <= 0 or bytes > 8:
-    raise newException(CborInvalidHeaderError,
-      "unsupported element byte width for typed-array decode: " & $bytes)
-
-  case bytes
-  of 1:
-    let ch = s.readChar()
-    result = uint64(byte(ord(ch)))
-  of 2:
-    var host: uint16
-    if info.endian == bigEndian:
-      host = unstoreBE[uint16](s)
-    else:
-      host = unstoreLE[uint16](s)
-    result = uint64(host)
-  of 4:
-    var host: uint32
-    if info.endian == bigEndian:
-      host = unstoreBE[uint32](s)
-    else:
-      host = unstoreLE[uint32](s)
-    result = uint64(host)
-  of 8:
-    var host: uint64
-    if info.endian == bigEndian:
-      host = unstoreBE[uint64](s)
-    else:
-      host = unstoreLE[uint64](s)
-    result = host
-  else:
-    raise newException(CborInvalidHeaderError,
-      "unsupported element byte width for typed-array decode: " & $bytes)
-
 proc decodeTypedArrayValueFromBits[T](info: TypedNumberInfo, bitsVal: uint64): T =
   ## Convert the unsigned integer bit pattern for a typed-array element back
   ## into a Nim value of type T, ensuring the tag's number class and width
@@ -526,7 +488,22 @@ proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T]) =
   let count = totalBytes div elemBytes
   arrOut.setLen(count)
 
-  
-  for idx in 0 ..< count:
-    let bitsVal = decodeBitsFromStream(info, s)
-    arrOut[idx] = decodeTypedArrayValueFromBits[T](info, bitsVal)
+  #for idx in 0 ..< count:
+  #  let bitsVal = decodeBitsFromStream(info, s)
+  #  arrOut[idx] = decodeTypedArrayValueFromBits[T](info, bitsVal)
+
+  when sizeof(T) == 1:
+    for idx in 0 ..< count:
+      let x = s.readChar()
+      arrOut[idx] = cast[T](x)
+  elif sizeof(T) in [2,4,8]:
+    for idx in 0 ..< count:
+      arrOut[idx] =
+        if info.endian == bigEndian:
+          s.unstoreBE(typeof(T))
+        else:
+          s.unstoreBE(typeof(T))
+
+  else:
+    {.error:
+      "unsupported element byte width for typed-array element: " & $elemBytes.}
