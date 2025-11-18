@@ -471,15 +471,18 @@ proc decodeTypedArrayValueFromBits[T](info: TypedNumberInfo, bitsVal: uint64): T
   else:
     {.error: "Typed arrays currently support only integer and float element types".}
 
-proc cborUnpackTypedArray*[T](s: Stream, tag: static[CborTag], arrOut: var seq[T]) =
+proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T]) =
   ## Decode an RFC 8746 typed array that was encoded with cborPackTypedArray.
   ##
   ## The caller supplies the expected tag, and the element type T must be
   ## compatible with the number class and width implied by the tag.
-  let info = parseTypedNumberTag(tag)
   var tag: CborTag
   if not s.readOneTag(tag):
     raise newException(CborInvalidHeaderError, "expected tag")
+
+  echo "TAG: ", tag
+  let info = parseTypedNumberTag(tag)
+  echo "INFO: ", info
 
   let (major, ai) = s.readInitialSkippingTags()
 

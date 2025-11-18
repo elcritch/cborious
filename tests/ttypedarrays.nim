@@ -170,7 +170,8 @@ suite "RFC 8746 array and typed-number tags":
     # Decode back to values
     var st2 = CborStream.init(s.data)
     var outArr: seq[uint8]
-    st2.cborUnpackTypedArray(CborTagTaUint8, outArr)
+    #st2.cborUnpackTypedArray(CborTagTaUint8, outArr)
+    st2.cborUnpackTypedArray(outArr)
     check outArr == dataIn
 
   test "sint16 typed arrays via tags 73/77 (ta-sint16be/le)":
@@ -193,8 +194,8 @@ suite "RFC 8746 array and typed-number tags":
 
     var outBe: seq[int16]
     var stBe2 = CborStream.init(sBe.data)
-    stBe2.cborUnpackTypedArray(CborTagTaSint16Be, outBe)
-    #stBe2.cborUnpackTypedArray(outBe)
+    #stBe2.cborUnpackTypedArray(CborTagTaSint16Be, outBe)
+    stBe2.cborUnpackTypedArray(outBe)
     check outBe == dataIn
 
     # Little-endian
@@ -214,8 +215,8 @@ suite "RFC 8746 array and typed-number tags":
 
     var outLe: seq[int16]
     var stLe2 = CborStream.init(sLe.data)
-    stLe2.cborUnpackTypedArray(CborTagTaSint16Le, outLe)
-    #stLe2.cborUnpackTypedArray(outLe)
+    #stLe2.cborUnpackTypedArray(CborTagTaSint16Le, outLe)
+    stLe2.cborUnpackTypedArray(outLe)
     check outLe == dataIn
 
   test "float64 typed arrays via tags 82/86 (ta-float64be/le)":
@@ -240,8 +241,8 @@ suite "RFC 8746 array and typed-number tags":
 
     var outBe: seq[float64]
     var stBe2 = CborStream.init(sBe.data)
-    stBe2.cborUnpackTypedArray(CborTagTaFloat64Be, outBe)
-    #stBe2.cborUnpackTypedArray(outBe)
+    #stBe2.cborUnpackTypedArray(CborTagTaFloat64Be, outBe)
+    stBe2.cborUnpackTypedArray(outBe)
     check outBe.len == dataIn.len
     for i in 0 ..< outBe.len:
       check outBe[i] == dataIn[i]
@@ -265,8 +266,8 @@ suite "RFC 8746 array and typed-number tags":
 
     var outLe: seq[float64]
     var stLe2 = CborStream.init(sLe.data)
-    stLe2.cborUnpackTypedArray(CborTagTaFloat64Le, outLe)
-    #stLe2.cborUnpackTypedArray(outLe)
+    #stLe2.cborUnpackTypedArray(CborTagTaFloat64Le, outLe)
+    stLe2.cborUnpackTypedArray(outLe)
     check outLe.len == dataIn.len
     for i in 0 ..< outLe.len:
       check outLe[i] == dataIn[i]
