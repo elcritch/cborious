@@ -342,21 +342,38 @@ proc cborPackTypedArray*[T](s: Stream, tag: CborTag, data: openArray[T]) =
   let info = parseTypedNumberTag(tag)
   s.cborPackTag(tag)
 
+  let elemBytes = info.elementBytes
+
   if data.len == 0:
     # Empty typed array: still a valid byte string with length 0.
-    var emptyBytes: seq[uint8] = @[]
-    s.cborPack(emptyBytes)
+    cborPackInt(s, 0'u64, CborMajor.Binary)
     return
 
-  var bytes: seq[uint8]
-  bytes.setLen(data.len * info.elementBytes)
-  var offset = 0
+  if elemBytes <= 0 or elemBytes > 8:
+    raise newException(CborInvalidArgError,
+      "unsupported element byte width for typed-array element: " & $elemBytes)
+
+  let totalBytes = data.len * elemBytes
+  cborPackInt(s, uint64(totalBytes), CborMajor.Binary)
+
   for x in data:
     let bitsVal = encodeTypedArrayValueBits(info, x)
-    appendBitsAsBytes(bytes, offset, info, bitsVal)
-    inc offset, info.elementBytes
-
-  s.cborPack(bytes)
+    if info.endian == tneBigEndian:
+      var shift = (elemBytes - 1) * 8
+      var i = 0
+      while i < elemBytes:
+        let b = uint8((bitsVal shr shift) and 0xff'u64)
+        s.write(char(b))
+        dec shift, 8
+        inc i
+    else:
+      var shift = 0
+      var i = 0
+      while i < elemBytes:
+        let b = uint8((bitsVal shr shift) and 0xff'u64)
+        s.write(char(b))
+        inc shift, 8
+        inc i
 
 
 proc cborUnpackTypedArray*[T](s: Stream, tag: CborTag, arrOut: var seq[T]) =
@@ -367,22 +384,158 @@ proc cborUnpackTypedArray*[T](s: Stream, tag: CborTag, arrOut: var seq[T]) =
   let info = parseTypedNumberTag(tag)
   s.cborExpectTag(tag)
 
-  var raw: seq[byte]
-  s.cborUnpack(raw)
-  if info.elementBytes <= 0:
+  let (major, ai) = s.readInitialSkippingTags()
+
+  if major == CborMajor.Simple and (ai == 22'u8 or ai == 23'u8):
+    # Treat null/undefined as empty typed array.
+    arrOut.setLen(0)
+    return
+
+  if major != CborMajor.Binary:
+    raise newException(CborInvalidHeaderError, "expected binary string")
+
+  let elemBytes = info.elementBytes
+  if elemBytes <= 0:
     raise newException(CborInvalidHeaderError,
       "invalid element width in typed-array tag")
-  if raw.len mod info.elementBytes != 0:
-    raise newException(CborInvalidHeaderError,
-      "typed-array byte string length not a multiple of element size")
 
-  let count = raw.len div info.elementBytes
-  arrOut.setLen(count)
-  var offset = 0
-  var i = 0
-  while i < count:
-    let bitsVal = decodeBitsFromBytes(info, raw, offset)
-    arrOut[i] = decodeTypedArrayValueFromBits[T](info, bitsVal)
-    inc offset, info.elementBytes
-    inc i
+  arrOut.setLen(0)
 
+  if ai == AiIndef:
+    # Indefinite-length byte string: concatenate binary chunks until break.
+    if elemBytes > 8:
+      # Skip payload to keep stream position consistent, then error.
+      var totalBytes = 0
+      while true:
+        let pos = s.getPosition()
+        let b = s.readChar()
+        if uint8(ord(b)) == 0xff'u8:
+          break
+        s.setPosition(pos)
+        let (m2, ai2) = s.readInitial()
+        if m2 != CborMajor.Binary or ai2 == AiIndef:
+          raise newException(CborInvalidHeaderError,
+            "invalid chunk in indefinite string")
+        let chunkLen = int(s.readAddInfo(ai2))
+        if chunkLen < 0:
+          raise newException(CborInvalidHeaderError, "negative length")
+        totalBytes += chunkLen
+        var j = 0
+        while j < chunkLen:
+          discard s.readChar()
+          inc j
+
+      if totalBytes == 0:
+        return
+      if totalBytes mod elemBytes != 0:
+        raise newException(CborInvalidHeaderError,
+          "typed-array byte string length not a multiple of element size")
+      raise newException(CborInvalidHeaderError,
+        "unsupported element byte width for typed-array decode: " & $elemBytes)
+
+    var buf: array[8, uint8]
+    var bufFill = 0
+
+    while true:
+      let pos = s.getPosition()
+      let b = s.readChar()
+      if uint8(ord(b)) == 0xff'u8:
+        break
+      s.setPosition(pos)
+      let (m2, ai2) = s.readInitial()
+      if m2 != CborMajor.Binary or ai2 == AiIndef:
+        raise newException(CborInvalidHeaderError,
+          "invalid chunk in indefinite string")
+      let chunkLen = int(s.readAddInfo(ai2))
+      if chunkLen < 0:
+        raise newException(CborInvalidHeaderError, "negative length")
+
+      var j = 0
+      while j < chunkLen:
+        let ch = s.readChar()
+        let b8 = uint8(ord(ch))
+        buf[bufFill] = b8
+        inc bufFill
+
+        if bufFill == elemBytes:
+          var bitsVal: uint64 = 0
+          if info.endian == tneBigEndian:
+            var i = 0
+            while i < elemBytes:
+              bitsVal = (bitsVal shl 8) or uint64(buf[i])
+              inc i
+          else:
+            var shift = 0
+            var i = 0
+            while i < elemBytes:
+              bitsVal = bitsVal or (uint64(buf[i]) shl shift)
+              inc i
+              inc shift, 8
+
+          arrOut.add(decodeTypedArrayValueFromBits[T](info, bitsVal))
+          bufFill = 0
+
+        inc j
+
+    if bufFill != 0:
+      raise newException(CborInvalidHeaderError,
+        "typed-array byte string length not a multiple of element size")
+
+  else:
+    # Definite-length byte string
+    let totalBytes = int(s.readAddInfo(ai))
+    if totalBytes < 0:
+      raise newException(CborInvalidHeaderError, "negative length")
+    if totalBytes == 0:
+      return
+
+    if totalBytes mod elemBytes != 0:
+      # Consume payload to leave stream at end of the byte string.
+      var skipped = 0
+      while skipped < totalBytes:
+        discard s.readChar()
+        inc skipped
+      raise newException(CborInvalidHeaderError,
+        "typed-array byte string length not a multiple of element size")
+
+    if elemBytes > 8:
+      var skipped = 0
+      while skipped < totalBytes:
+        discard s.readChar()
+        inc skipped
+      raise newException(CborInvalidHeaderError,
+        "unsupported element byte width for typed-array decode: " & $elemBytes)
+
+    let count = totalBytes div elemBytes
+    arrOut.setLen(count)
+
+    var buf: array[8, uint8]
+    var bufFill = 0
+    var idx = 0
+    var remaining = totalBytes
+
+    while remaining > 0:
+      let ch = s.readChar()
+      let b8 = uint8(ord(ch))
+      buf[bufFill] = b8
+      inc bufFill
+      dec remaining
+
+      if bufFill == elemBytes:
+        var bitsVal: uint64 = 0
+        if info.endian == tneBigEndian:
+          var i = 0
+          while i < elemBytes:
+            bitsVal = (bitsVal shl 8) or uint64(buf[i])
+            inc i
+        else:
+          var shift = 0
+          var i = 0
+          while i < elemBytes:
+            bitsVal = bitsVal or (uint64(buf[i]) shl shift)
+            inc i
+            inc shift, 8
+
+        arrOut[idx] = decodeTypedArrayValueFromBits[T](info, bitsVal)
+        inc idx
+        bufFill = 0
