@@ -97,7 +97,7 @@ when system.cpuEndian == littleEndian:
       s.store32(cast[uint32](val))
     elif sizeof(T) == 8:
       s.store64(cast[uint64](val))
-    else: {.error: "unsupported size: " & $(typeof(T)).}
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
 
   proc unstoreBE*[T](s: Stream): T =
     when sizeof(T) == 2:
@@ -106,7 +106,7 @@ when system.cpuEndian == littleEndian:
       cast[T](s.unstore32(val))
     elif sizeof(T) == 8:
       cast[T](s.unstore64(val))
-    else: {.error: "unsupported size: " & $(typeof(T)).}
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
 else:
   proc storeBE*[T](s: Stream, val: T) = s.write(val)
   proc unstoreBE*[T](s: Stream): T =
@@ -116,7 +116,7 @@ else:
       cast[T](s.unstore32(val))
     elif sizeof(T) == 8:
       cast[T](s.unstore64(val))
-    else: {.error: "unsupported size: " & $(typeof(T)).}
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
 
 when system.cpuEndian == bigEndian:
   proc storeLE*[T](s: Stream, val: T) =
@@ -126,7 +126,7 @@ when system.cpuEndian == bigEndian:
       s.store32(cast[uint32](val))
     elif sizeof(T) == 8:
       s.store64(cast[uint64](val))
-    else: {.error: "unsupported size: " & $(typeof(T)).}
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
 
   proc unstoreLE*[T](s: Stream): T =
     when sizeof(T) == 2:
@@ -135,7 +135,7 @@ when system.cpuEndian == bigEndian:
       cast[T](s.unstore32(val))
     elif sizeof(T) == 8:
       cast[T](s.unstore64(val))
-    else: {.error: "unsupported size: " & $(typeof(T)).}
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
 else:
   proc storeLE*[T](s: Stream, val: T) = s.write(val)
   proc unstoreLE*[T](s: Stream): T =
@@ -145,7 +145,7 @@ else:
       cast[T](s.unstore32(val))
     elif sizeof(T) == 8:
       cast[T](s.unstore64(val))
-    else: {.error: "unsupported size: " & $(typeof(T)).}
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
 
 
 proc init*(x: typedesc[CborStream], data: sink string, encodingMode = defaultCborEncodingMode): CborStream =
