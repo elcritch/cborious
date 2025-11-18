@@ -291,11 +291,7 @@ proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, data: openArray[
   cborPackInt(s, uint64(totalBytes), CborMajor.Binary)
 
   when sizeof(T) == 1:
-    if info.endian == system.cpuEndian:
-      s.writeData(addr(data[0]), totalBytes)
-    else:
-      for x in data:
-        s.write(x)
+    s.writeData(addr(data[0]), totalBytes)
   elif sizeof(T) in [2,4,8]:
     if info.endian == system.cpuEndian:
       s.writeData(addr(data[0]), totalBytes)
