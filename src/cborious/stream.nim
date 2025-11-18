@@ -108,7 +108,7 @@ when system.cpuEndian == littleEndian:
       cast[T](s.unstore64(val))
     else: {.error: "unsupported size: " & $(typeof(T)).}
 else:
-  proc storeBE*(s: Stream, val: T) = s.write(val)
+  proc storeBE*[T](s: Stream, val: T) = s.write(val)
   proc unstoreBE*[T](s: Stream): T =
     when sizeof(T) == 2:
       cast[T](s.unstore16(val))
@@ -137,7 +137,7 @@ when system.cpuEndian == bigEndian:
       cast[T](s.unstore64(val))
     else: {.error: "unsupported size: " & $(typeof(T)).}
 else:
-  proc storeLE*(s: Stream, val: T) = s.write(val)
+  proc storeLE*[T](s: Stream, val: T) = s.write(val)
   proc unstoreLE*[T](s: Stream): T =
     when sizeof(T) == 2:
       cast[T](s.unstore16(val))
@@ -146,8 +146,7 @@ else:
     elif sizeof(T) == 8:
       cast[T](s.unstore64(val))
     else: {.error: "unsupported size: " & $(typeof(T)).}
-# Additional utility functions for different sizes (following msgpack4nim pattern)
-# These are used internally and kept for potential future expansion
+
 
 proc init*(x: typedesc[CborStream], data: sink string, encodingMode = defaultCborEncodingMode): CborStream =
   ## Initialize a CborStream backed by the provided string buffer.
