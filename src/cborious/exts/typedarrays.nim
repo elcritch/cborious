@@ -143,7 +143,7 @@ proc parseTypedNumberTag*(tag: CborTag): TypedNumberInfo =
 
 # Typed-array helpers (Section 2 "Typed Arrays") ---------------------------
 
-proc encodeTypedArrayValueBits[T](info: static TypedNumberInfo, x: T): uint64 =
+proc encodeTypedArrayValueBits[T](info: TypedNumberInfo, x: T): uint64 =
   ## Convert a Nim value to the unsigned integer bit pattern used in the
   ## RFC 8746 typed array element, validating that the tag's number class
   ## and width match the Nim type.
@@ -166,22 +166,22 @@ proc encodeTypedArrayValueBits[T](info: static TypedNumberInfo, x: T): uint64 =
       {.error: "Unsupported float size for typed arrays".}
 
   elif T is SomeUnsignedInt:
-    when info.kind != tnkUint:
+    if info.kind != tnkUint:
       raise newException(CborInvalidArgError,
         "typed-array tag does not denote an unsigned integer class")
     const typeBits = sizeof(T) * 8
-    when info.bits != typeBits:
+    if info.bits != typeBits:
       raise newException(CborInvalidArgError,
         "typed-array unsigned width (" & $info.bits &
         " bits) does not match element type (" & $typeBits & " bits)")
     result = uint64(x)
 
   elif T is SomeSignedInt:
-    when info.kind != tnkSint:
+    if info.kind != tnkSint:
       raise newException(CborInvalidArgError,
         "typed-array tag does not denote a signed integer class")
     const typeBits = sizeof(T) * 8
-    when info.bits != typeBits:
+    if info.bits != typeBits:
       raise newException(CborInvalidArgError,
         "typed-array signed width (" & $info.bits &
         " bits) does not match element type (" & $typeBits & " bits)")
@@ -270,71 +270,6 @@ proc decodeBitsFromBytes(info: TypedNumberInfo, raw: openArray[byte], offset: in
       "unsupported element byte width for typed-array decode: " & $bytes)
 
 
-proc decodeTypedArrayValueFromBits[T](info: TypedNumberInfo, bitsVal: uint64): T =
-  ## Convert the unsigned integer bit pattern for a typed-array element back
-  ## into a Nim value of type T, ensuring the tag's number class and width
-  ## match the requested element type.
-  when T is SomeFloat:
-    if info.kind != tnkFloat:
-      raise newException(CborInvalidHeaderError,
-        "typed-array tag does not denote a float class")
-    const typeBits = sizeof(T) * 8
-    if info.bits != typeBits:
-      raise newException(CborInvalidHeaderError,
-        "typed-array float width (" & $info.bits &
-        " bits) does not match element type (" & $typeBits & " bits)")
-    when sizeof(T) == 4:
-      let bits32 = uint32(bitsVal and 0xffff_ffff'u64)
-      result = T(cast[float32](bits32))
-    elif sizeof(T) == 8:
-      result = T(cast[float64](bitsVal))
-    else:
-      {.error: "Unsupported float size for typed arrays".}
-
-  elif T is SomeUnsignedInt:
-    if info.kind != tnkUint:
-      raise newException(CborInvalidHeaderError,
-        "typed-array tag does not denote an unsigned integer class")
-    const typeBits = sizeof(T) * 8
-    if info.bits != typeBits:
-      raise newException(CborInvalidHeaderError,
-        "typed-array unsigned width (" & $info.bits &
-        " bits) does not match element type (" & $typeBits & " bits)")
-    if bitsVal > uint64(high(T)):
-      raise newException(CborOverflowError,
-        "typed-array unsigned element does not fit target type")
-    result = T(bitsVal)
-
-  elif T is SomeSignedInt:
-    if info.kind != tnkSint:
-      raise newException(CborInvalidHeaderError,
-        "typed-array tag does not denote a signed integer class")
-    const typeBits = sizeof(T) * 8
-    if info.bits != typeBits:
-      raise newException(CborInvalidHeaderError,
-        "typed-array signed width (" & $info.bits &
-        " bits) does not match element type (" & $typeBits & " bits)")
-
-    let bits = info.bits
-    var xi: int64
-    if bits < 64:
-      let signBit = 1'u64 shl (bits - 1)
-      if (bitsVal and signBit) != 0'u64:
-        let full = 1'u64 shl bits
-        xi = int64(bitsVal) - int64(full)
-      else:
-        xi = int64(bitsVal)
-    else:
-      xi = cast[int64](bitsVal)
-
-    if xi < int64(low(T)) or xi > int64(high(T)):
-      raise newException(CborOverflowError,
-        "typed-array signed element does not fit target type")
-    result = T(xi)
-
-  else:
-    {.error: "Typed arrays currently support only integer and float element types".}
-
 proc cborPackTypedArray*[T](s: Stream, tag: CborTag, data: openArray[T]) =
   ## Encode an RFC 8746 typed array (Section 2) for a homogeneous array of
   ## numbers, using the supplied tag in the 64..87 range.
@@ -342,12 +277,12 @@ proc cborPackTypedArray*[T](s: Stream, tag: CborTag, data: openArray[T]) =
   ## The tag selects the number class (uint/sint/float), endianness, and
   ## element width; this procedure validates that these agree with the
   ## Nim element type T before encoding.
-  const info = parseTypedNumberTag(tag)
+  let info = parseTypedNumberTag(tag)
   s.cborPackTag(tag)
 
   if info.elementBytes <= 0 or info.elementBytes > 8:
     raise newException(CborInvalidArgError,
-      "unsupported element byte width for typed-array element: " & $elementBytes)
+      "unsupported element byte width for typed-array element: " & $info.elementBytes)
 
   if data.len == 0:
     # Empty typed array: still a valid byte string with length 0.
@@ -359,9 +294,12 @@ proc cborPackTypedArray*[T](s: Stream, tag: CborTag, data: openArray[T]) =
 
   for x in data:
       let item =
-        when 
-        x
-      when sizeof(T) == 1:
+        if info.elementBytes == sizeof(T): 
+          x
+        else:
+          encodeTypedArrayValueBits(info, x)
+
+      if sizeof(T) == 1:
         s.write(item)
       elif sizeof(T) in [2,4, 8]:
         if info.endian == tneBigEndian:
@@ -446,6 +384,71 @@ proc cborPackTypedArrayConvert*[T](s: Stream, tag: CborTag, data: openArray[T]) 
     else:
       raise newException(CborInvalidArgError,
         "unsupported element byte width for typed-array element: " & $elemBytes)
+
+proc decodeTypedArrayValueFromBits[T](info: TypedNumberInfo, bitsVal: uint64): T =
+  ## Convert the unsigned integer bit pattern for a typed-array element back
+  ## into a Nim value of type T, ensuring the tag's number class and width
+  ## match the requested element type.
+  when T is SomeFloat:
+    if info.kind != tnkFloat:
+      raise newException(CborInvalidHeaderError,
+        "typed-array tag does not denote a float class")
+    const typeBits = sizeof(T) * 8
+    if info.bits != typeBits:
+      raise newException(CborInvalidHeaderError,
+        "typed-array float width (" & $info.bits &
+        " bits) does not match element type (" & $typeBits & " bits)")
+    when sizeof(T) == 4:
+      let bits32 = uint32(bitsVal and 0xffff_ffff'u64)
+      result = T(cast[float32](bits32))
+    elif sizeof(T) == 8:
+      result = T(cast[float64](bitsVal))
+    else:
+      {.error: "Unsupported float size for typed arrays".}
+
+  elif T is SomeUnsignedInt:
+    if info.kind != tnkUint:
+      raise newException(CborInvalidHeaderError,
+        "typed-array tag does not denote an unsigned integer class")
+    const typeBits = sizeof(T) * 8
+    if info.bits != typeBits:
+      raise newException(CborInvalidHeaderError,
+        "typed-array unsigned width (" & $info.bits &
+        " bits) does not match element type (" & $typeBits & " bits)")
+    if bitsVal > uint64(high(T)):
+      raise newException(CborOverflowError,
+        "typed-array unsigned element does not fit target type")
+    result = T(bitsVal)
+
+  elif T is SomeSignedInt:
+    if info.kind != tnkSint:
+      raise newException(CborInvalidHeaderError,
+        "typed-array tag does not denote a signed integer class")
+    const typeBits = sizeof(T) * 8
+    if info.bits != typeBits:
+      raise newException(CborInvalidHeaderError,
+        "typed-array signed width (" & $info.bits &
+        " bits) does not match element type (" & $typeBits & " bits)")
+
+    let bits = info.bits
+    var xi: int64
+    if bits < 64:
+      let signBit = 1'u64 shl (bits - 1)
+      if (bitsVal and signBit) != 0'u64:
+        let full = 1'u64 shl bits
+        xi = int64(bitsVal) - int64(full)
+      else:
+        xi = int64(bitsVal)
+    else:
+      xi = cast[int64](bitsVal)
+
+    if xi < int64(low(T)) or xi > int64(high(T)):
+      raise newException(CborOverflowError,
+        "typed-array signed element does not fit target type")
+    result = T(xi)
+
+  else:
+    {.error: "Typed arrays currently support only integer and float element types".}
 
 proc cborUnpackTypedArray*[T](s: Stream, tag: static[CborTag], arrOut: var seq[T]) =
   ## Decode an RFC 8746 typed array that was encoded with cborPackTypedArray.
