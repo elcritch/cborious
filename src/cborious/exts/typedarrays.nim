@@ -207,7 +207,6 @@ proc encodeTypedArrayValueBits[T](info: TypedNumberInfo, x: T): uint64 =
     {.error: "Typed arrays currently support only integer and float element types".}
 
 
-
 proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, tag: CborTag, data: openArray[T]) =
   ## Encode an RFC 8746 typed array (Section 2) for a homogeneous array of
   ## numbers, using the supplied tag in the 64..87 range.
