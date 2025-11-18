@@ -490,12 +490,18 @@ proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpu
       let x = s.readChar()
       arrOut[idx] = cast[T](x)
   elif sizeof(T) in [2,4,8]:
-    for idx in 0 ..< count:
-      arrOut[idx] =
-        if info.endian == bigEndian:
-          s.unstoreBE(typeof(T))
-        else:
-          s.unstoreBE(typeof(T))
+    if info.endian == system.cpuEndian:
+      let ln = s.readData(arrOut[0].addr, count)
+      if ln != count:
+        raise newException(CborInvalidHeaderError,
+      "typed-array byte string length was incorrect: " & $(ln) & " expectd: " & $(count))
+    else:
+      for idx in 0 ..< count:
+        arrOut[idx] =
+          if info.endian == bigEndian:
+            s.unstoreBE(typeof(T))
+          else:
+            s.unstoreLE(typeof(T))
   else:
     {.error:
       "unsupported element byte width for typed-array element: " & $elemBytes.}
