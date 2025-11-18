@@ -291,20 +291,25 @@ proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, data: openArray[
   cborPackInt(s, uint64(totalBytes), CborMajor.Binary)
 
   when sizeof(T) == 1:
-    for x in data:
-      s.write(x)
+    if info.endian == system.cpuEndian:
+      s.writeData(addr(data[0]), totalBytes)
+    else:
+      for x in data:
+        s.write(x)
   elif sizeof(T) in [2,4,8]:
-    for x in data:
-      if info.endian == bigEndian:
-        static:
-          echo "PACK SIZE: ", sizeof(T)
-        s.storeBE(x)
-      else:
-        s.storeLE(x)
+    if info.endian == system.cpuEndian:
+      s.writeData(addr(data[0]), totalBytes)
+    else:
+      for x in data:
+        if info.endian == bigEndian:
+          static:
+            echo "PACK SIZE: ", sizeof(T)
+          s.storeBE(x)
+        else:
+          s.storeLE(x)
   else:
     {.error:
       "unsupported element byte width for typed-array element: " & $elemBytes.}
-
 
 proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpuEndian) =
   ## Decode an RFC 8746 typed array that was encoded with cborPackTypedArray.
