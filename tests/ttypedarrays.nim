@@ -22,7 +22,7 @@ proc toDecPretty(bs: openArray[byte]): string =
     result.add(' ')
     result.add($(c.int))
 
-suite "RFC 8746 array tags":
+suite "RFC 8746 array and typed-number tags":
   test "1D int32 roundtrip via tag 40":
     let dataIn = @[int32(1), int32(-2), int32(123456), int32(-9999)]
     var s = CborStream.init()
@@ -81,3 +81,75 @@ suite "RFC 8746 array tags":
     check outArr.len == dataIn.len
     for i in 0 ..< outArr.len:
       check outArr[i] == dataIn[i]
+
+  test "parse typed-number tags 64..87 (selected cases)":
+    # uint8 Typed Array (tag 64)
+    var info = parseTypedNumberTag(CborTagTaUint8)
+    check info.kind == tnkUint
+    check info.bits == 8
+    check info.elementBytes == 1
+    check info.endian == tneBigEndian
+    check not info.clamped
+
+    # uint8 Typed Array, clamped arithmetic (tag 68)
+    info = parseTypedNumberTag(CborTagTaUint8Clamped)
+    check info.kind == tnkUint
+    check info.bits == 8
+    check info.elementBytes == 1
+    # Endianness is redundant for 8-bit but still decodes from the tag.
+    check info.endian == tneLittleEndian
+    check info.clamped
+
+    # sint8 Typed Array (tag 72)
+    info = parseTypedNumberTag(CborTagTaSint8)
+    check info.kind == tnkSint
+    check info.bits == 8
+    check info.elementBytes == 1
+
+    # uint16 big-endian / little-endian (tags 65, 69)
+    info = parseTypedNumberTag(CborTagTaUint16Be)
+    check info.kind == tnkUint
+    check info.bits == 16
+    check info.elementBytes == 2
+    check info.endian == tneBigEndian
+
+    info = parseTypedNumberTag(CborTagTaUint16Le)
+    check info.kind == tnkUint
+    check info.bits == 16
+    check info.elementBytes == 2
+    check info.endian == tneLittleEndian
+
+    # sint32 big-endian / little-endian (tags 74, 78)
+    info = parseTypedNumberTag(CborTagTaSint32Be)
+    check info.kind == tnkSint
+    check info.bits == 32
+    check info.elementBytes == 4
+    check info.endian == tneBigEndian
+
+    info = parseTypedNumberTag(CborTagTaSint32Le)
+    check info.kind == tnkSint
+    check info.bits == 32
+    check info.elementBytes == 4
+    check info.endian == tneLittleEndian
+
+    # IEEE 754 binary64, big-endian / little-endian (tags 82, 86)
+    info = parseTypedNumberTag(CborTagTaFloat64Be)
+    check info.kind == tnkFloat
+    check info.bits == 64
+    check info.elementBytes == 8
+    check info.endian == tneBigEndian
+
+    info = parseTypedNumberTag(CborTagTaFloat64Le)
+    check info.kind == tnkFloat
+    check info.bits == 64
+    check info.elementBytes == 8
+    check info.endian == tneLittleEndian
+
+  test "parseTypedNumberTag rejects reserved/invalid tags":
+    # Tag 76 is reserved for little-endian sint8 and MUST NOT be used.
+    expect CborInvalidArgError:
+      discard parseTypedNumberTag(CborTag(76'u64))
+
+    # Tags outside 64..87 are not typed-number tags.
+    expect CborInvalidArgError:
+      discard parseTypedNumberTag(CborTag(40'u64))
