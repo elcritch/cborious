@@ -307,7 +307,9 @@ proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, data: openArray[
     {.error:
       "unsupported element byte width for typed-array element: " & $elemBytes.}
 
-proc cborUnpackTypedArray*[T](s: Stream, arrOut: var seq[T], endian = system.cpuEndian) =
+proc cborUnpackTypedArray*[T](
+    s: Stream, arrOut: var seq[T], endian = system.cpuEndian
+) =
   ## Decode an RFC 8746 typed array that was encoded with cborPackTypedArray.
   ##
   ## The caller supplies the expected tag, and the element type T must be
