@@ -123,9 +123,9 @@ proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
       if clamped:
         result = CborTagTaUint8Clamped
       else:
-        #if endian != bigEndian:
-        #  raise newException(CborInvalidArgError,
-        #    "tag 68 (uint8 clamped) is reserved; plain uint8 typed arrays use big-endian tag 64")
+        if endian != bigEndian:
+          raise newException(CborInvalidArgError,
+            "tag 68 (uint8 clamped) is reserved; plain uint8 typed arrays use big-endian tag 64")
         result = CborTagTaUint8
 
     elif bytes == 2:
@@ -334,7 +334,11 @@ proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, data: openArray[
   ## element width; this procedure validates that these agree with the
   ## Nim element type T before encoding.
 
-  let tag: CborTag = typedNumberTagFor[T](endian)
+  let tag: CborTag =
+    if sizeof(T) == 1:
+      typedNumberTagFor[T](bigEndian)
+    else:
+      typedNumberTagFor[T](endian)
   let info = parseTypedNumberTag(tag)
   s.cborPackTag(tag)
 
