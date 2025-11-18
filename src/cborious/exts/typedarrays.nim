@@ -84,7 +84,7 @@ template assertShapeMatches(lenData: int, shape: openArray[int]) =
 
 proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
     endian: TypedNumberEndian; clamped = false
-  ): CborTag =
+): CborTag =
   ## Select the RFC 8746 typed-number tag in the 64..87 range corresponding
   ## to the Nim numeric type `T`, the desired endianness, and (for uint8)
   ## whether clamped arithmetic is requested.
@@ -334,7 +334,7 @@ proc cborPackTypedArray*[T: SomeInteger | SomeFloat](s: Stream, data: openArray[
   ## element width; this procedure validates that these agree with the
   ## Nim element type T before encoding.
 
-  let tag = typedNumberTagFor[T](endian) == CborTagTaUint8
+  let tag: CborTag = typedNumberTagFor[T](endian)
   let info = parseTypedNumberTag(tag)
   s.cborPackTag(tag)
 

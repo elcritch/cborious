@@ -178,7 +178,8 @@ suite "RFC 8746 array and typed-number tags":
 
     # Big-endian
     var sBe = CborStream.init()
-    sBe.cborPackTypedArray(CborTagTaSint16Be, dataIn)
+    #sBe.cborPackTypedArray(CborTagTaSint16Be, dataIn)
+    sBe.cborPackTypedArray(dataIn)
 
     var tagBe: CborTag
     var stBe = CborStream.init(sBe.data)
@@ -193,11 +194,13 @@ suite "RFC 8746 array and typed-number tags":
     var outBe: seq[int16]
     var stBe2 = CborStream.init(sBe.data)
     stBe2.cborUnpackTypedArray(CborTagTaSint16Be, outBe)
+    #stBe2.cborUnpackTypedArray(outBe)
     check outBe == dataIn
 
     # Little-endian
     var sLe = CborStream.init()
-    sLe.cborPackTypedArray(CborTagTaSint16Le, dataIn)
+    #sLe.cborPackTypedArray(CborTagTaSint16Le, dataIn)
+    sLe.cborPackTypedArray(dataIn)
 
     var tagLe: CborTag
     var stLe = CborStream.init(sLe.data)
@@ -212,6 +215,7 @@ suite "RFC 8746 array and typed-number tags":
     var outLe: seq[int16]
     var stLe2 = CborStream.init(sLe.data)
     stLe2.cborUnpackTypedArray(CborTagTaSint16Le, outLe)
+    #stLe2.cborUnpackTypedArray(outLe)
     check outLe == dataIn
 
   test "float64 typed arrays via tags 82/86 (ta-float64be/le)":
@@ -219,7 +223,8 @@ suite "RFC 8746 array and typed-number tags":
 
     # Big-endian float64 typed array (tag 82)
     var sBe = CborStream.init()
-    sBe.cborPackTypedArray(CborTagTaFloat64Be, dataIn)
+    #sBe.cborPackTypedArray(CborTagTaFloat64Be, dataIn)
+    sBe.cborPackTypedArray(dataIn)
 
     var tagBe: CborTag
     var stBe = CborStream.init(sBe.data)
@@ -236,13 +241,15 @@ suite "RFC 8746 array and typed-number tags":
     var outBe: seq[float64]
     var stBe2 = CborStream.init(sBe.data)
     stBe2.cborUnpackTypedArray(CborTagTaFloat64Be, outBe)
+    #stBe2.cborUnpackTypedArray(outBe)
     check outBe.len == dataIn.len
     for i in 0 ..< outBe.len:
       check outBe[i] == dataIn[i]
 
     # Little-endian float64 typed array (tag 86)
     var sLe = CborStream.init()
-    sLe.cborPackTypedArray(CborTagTaFloat64Le, dataIn)
+    #sLe.cborPackTypedArray(CborTagTaFloat64Le, dataIn)
+    sLe.cborPackTypedArray(dataIn)
 
     var tagLe: CborTag
     var stLe = CborStream.init(sLe.data)
@@ -259,6 +266,7 @@ suite "RFC 8746 array and typed-number tags":
     var outLe: seq[float64]
     var stLe2 = CborStream.init(sLe.data)
     stLe2.cborUnpackTypedArray(CborTagTaFloat64Le, outLe)
+    #stLe2.cborUnpackTypedArray(outLe)
     check outLe.len == dataIn.len
     for i in 0 ..< outLe.len:
       check outLe[i] == dataIn[i]
