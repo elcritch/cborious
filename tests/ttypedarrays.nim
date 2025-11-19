@@ -278,4 +278,3 @@ suite "RFC 8746 array and typed-number tags":
       for item in outBe.mitems():
         swapEndian64(addr(item), addr(item))
     check outLe == dataIn
-
