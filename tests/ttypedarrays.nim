@@ -171,9 +171,35 @@ suite "RFC 8746 array and typed-number tags":
     # Decode back to values
     var st2 = CborStream.init(s.data)
     var outArr: seq[uint8]
-    #st2.cborUnpackTypedArray(CborTagTaUint8, outArr)
     st2.cborUnpackTypedArray(outArr)
     check outArr == dataIn
+
+  test "uint8 typed array via tag 64 (ta-uint8) into an array":
+    let dataIn = [uint8(0), uint8(1), uint8(255)]
+    var s = CborStream.init()
+    s.cborPackTypedArray(dataIn)
+
+    # Check outer tag and that payload is a byte string
+    var st = CborStream.init(s.data)
+    var tag: CborTag
+    check st.readOneTag(tag)
+    check tag == CborTagTaUint8
+
+    let (maj, ai) = st.readInitial()
+    check maj == CborMajor.Binary
+
+    # Check raw CBOR bytes (D8 40 43 00 01 FF)
+    let hex = s.data.toBytes().toHexPretty()
+    check hex == "D8 40 43 00 01 FF"
+
+    # Decode back to values
+    var st2 = CborStream.init(s.data)
+    var outArr: array[2, uint8]
+    st2.cborUnpackTypedArray(outArr)
+    check outArr == dataIn[0..1]
+
+  #test "uint8 typed array via tag 64 (ta-uint8) via tagged type":
+  #  type TypedArray = 
 
   test "sint16 typed arrays via tags 73/77 (ta-sint16be/le)":
     let dataIn = @[int16(-2), int16(1234), int16(-32768), int16(0), int16(32767)]
