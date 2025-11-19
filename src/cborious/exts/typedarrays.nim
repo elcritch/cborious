@@ -367,6 +367,9 @@ proc cborUnpackTypedArray*[X](
     arrOut.setLen(count)
   let availBytes = min(totalBytes, arrOut.len() * info.elementBytes)
 
+  static:
+    echo "TT: ", sizeof(T)
+    echo "EB: ", info.elementBytes
   if sizeof(T) == info.elementBytes:
     let ln = s.readData(arrOut[0].addr, totalBytes)
     assert ln == totalBytes
