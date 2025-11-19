@@ -334,8 +334,7 @@ proc cborUnpackTypedArray*[X](
   if major != CborMajor.Binary:
     raise newException(CborInvalidHeaderError, "expected binary string")
 
-  let elemBytes = info.elementBytes
-  if elemBytes <= 0:
+  if info.elementBytes <= 0:
     raise newException(CborInvalidHeaderError,
       "invalid element width in typed-array tag")
 
@@ -346,7 +345,7 @@ proc cborUnpackTypedArray*[X](
   if totalBytes == 0:
     return
 
-  if totalBytes mod elemBytes != 0:
+  if totalBytes mod info.elementBytes != 0:
     # Consume payload to leave stream at end of the byte string.
     var skipped = 0
     while skipped < totalBytes:
@@ -355,21 +354,22 @@ proc cborUnpackTypedArray*[X](
     raise newException(CborInvalidHeaderError,
       "typed-array byte string length not a multiple of element size")
 
-  if elemBytes > 8:
+  if info.elementBytes > 8:
     var skipped = 0
     while skipped < totalBytes:
       discard s.readChar()
       inc skipped
     raise newException(CborInvalidHeaderError,
-      "unsupported element byte width for typed-array decode: " & $elemBytes)
+      "unsupported element byte width for typed-array decode: " & $info.elementBytes)
 
-  let count = totalBytes div elemBytes
+  let count = totalBytes div info.elementBytes
   when arrOut is seq:
     arrOut.setLen(count)
-  let availBytes = min(totalBytes, arrOut.len() * elemBytes)
+  let availBytes = min(totalBytes, arrOut.len() * info.elementBytes)
 
-  when sizeof(T) == 1:
+  if sizeof(T) == info.elementBytes:
     let ln = s.readData(arrOut[0].addr, totalBytes)
+    assert ln == totalBytes
   elif sizeof(T) in [2,4,8]:
     if info.endian == endian:
       let ln = s.readData(arrOut[0].addr, totalBytes)
