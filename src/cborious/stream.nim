@@ -55,17 +55,17 @@ const defaultCborEncodingMode*: set[EncodingMode] = {CborObjToArray, CborCheckHo
 # Endianness-aware utility functions (following msgpack4nim pattern)
 when system.cpuEndian == littleEndian:
   proc store16*(s: Stream, val: uint16) =
-    var res: uint16
+    var res: typeof(val)
     swapEndian16(addr(res), unsafeAddr(val))
     s.write(res)
     
   proc store32*(s: Stream, val: uint32) =
-    var res: uint32
+    var res: typeof(val)
     swapEndian32(addr(res), unsafeAddr(val))
     s.write(res)
     
   proc store64*(s: Stream, val: uint64) =
-    var res: uint64
+    var res: typeof(val)
     swapEndian64(addr(res), unsafeAddr(val))
     s.write(res)
     
@@ -84,12 +84,69 @@ else:
   proc store16*(s: Stream, val: uint16) = s.write(val)
   proc store32*(s: Stream, val: uint32) = s.write(val)
   proc store64*(s: Stream, val: uint64) = s.write(val)
-  proc unstore16*(s: Stream): uint16 = cast[uint16](s.readInt16)
-  proc unstore32*(s: Stream): uint32 = cast[uint32](s.readInt32)
-  proc unstore64*(s: Stream): uint64 = cast[uint64](s.readInt64)
+  proc unstore16*(s: Stream): uint16 = cast[uint16](s.readInt16())
+  proc unstore32*(s: Stream): uint32 = cast[uint32](s.readInt32())
+  proc unstore64*(s: Stream): uint64 = cast[uint64](s.readInt64())
 
-# Additional utility functions for different sizes (following msgpack4nim pattern)
-# These are used internally and kept for potential future expansion
+# Extended Endianness-aware utility functions
+when system.cpuEndian == littleEndian:
+  proc storeBE*[T](s: Stream, val: T) =
+    when sizeof(T) == 2:
+      s.store16(cast[uint16](val))
+    elif sizeof(T) == 4:
+      s.store32(cast[uint32](val))
+    elif sizeof(T) == 8:
+      s.store64(cast[uint64](val))
+    else: {.error: "unsupported size: " & $sizeof(T) & " for: " & $(T).}
+
+  proc unstoreBE*[T](s: Stream, tp: typedesc[T]): T =
+    when sizeof(T) == 2:
+      cast[T](s.readInt16)
+    elif sizeof(T) == 4:
+      cast[T](s.readInt32)
+    elif sizeof(T) == 8:
+      cast[T](s.readInt64)
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
+else:
+  proc storeBE*[T](s: Stream, val: T) = s.write(val)
+  proc unstoreBE*[T](s: Stream, tp: typedesc[T]): T =
+    when sizeof(T) == 2:
+      cast[T](s.unstore16())
+    elif sizeof(T) == 4:
+      cast[T](s.unstore32())
+    elif sizeof(T) == 8:
+      cast[T](s.unstore64())
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
+
+when system.cpuEndian == bigEndian:
+  proc storeLE*[T](s: Stream, val: T) =
+    when sizeof(T) == 2:
+      s.store16(cast[uint16](val))
+    elif sizeof(T) == 4:
+      s.store32(cast[uint32](val))
+    elif sizeof(T) == 8:
+      s.store64(cast[uint64](val))
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
+
+  proc unstoreLE*[T](s: Stream, tp: typedesc[T]): T =
+    when sizeof(T) == 2:
+      cast[T](s.unstore16())
+    elif sizeof(T) == 4:
+      cast[T](s.unstore32())
+    elif sizeof(T) == 8:
+      cast[T](s.unstore64())
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
+else:
+  proc storeLE*[T](s: Stream, val: T) = s.write(val)
+  proc unstoreLE*[T](s: Stream, tp: typedesc[T]): T =
+    when sizeof(T) == 2:
+      cast[T](s.unstore16())
+    elif sizeof(T) == 4:
+      cast[T](s.unstore32())
+    elif sizeof(T) == 8:
+      cast[T](s.unstore64())
+    else: {.error: "unsupported size: " & $(sizeof(T)).}
+
 
 proc init*(x: typedesc[CborStream], data: sink string, encodingMode = defaultCborEncodingMode): CborStream =
   ## Initialize a CborStream backed by the provided string buffer.
