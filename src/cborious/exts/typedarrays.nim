@@ -367,10 +367,13 @@ proc cborUnpackTypedArray*[X](
     arrOut.setLen(count)
   let availBytes = min(totalBytes, arrOut.len() * info.elementBytes)
 
-  static:
-    echo "TT: ", sizeof(T)
-    echo "EB: ", info.elementBytes
-  if sizeof(T) == info.elementBytes:
+  if sizeof(T) != info.elementBytes:
+      raise newException(CborInvalidHeaderError,
+                          "typed-array element size mismatch; " &
+                          "got elem size: " & $info.elementBytes &
+                          " for type: " & $(T))
+
+  when sizeof(T) == 1:
     let ln = s.readData(arrOut[0].addr, totalBytes)
     assert ln == totalBytes
   elif sizeof(T) in [2,4,8]:
