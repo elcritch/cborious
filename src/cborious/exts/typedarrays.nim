@@ -374,11 +374,11 @@ proc cborUnpackTypedArray*[X](
                           " for type: " & $(T))
 
   when sizeof(T) == 1:
-    let ln = s.readData(arrOut[0].addr, totalBytes)
-    assert ln == totalBytes
+    let ln = s.readData(arrOut[0].addr, availBytes)
+    assert ln == availBytes
   elif sizeof(T) in [2,4,8]:
     if info.endian == endian:
-      let ln = s.readData(arrOut[0].addr, totalBytes)
+      let ln = s.readData(arrOut[0].addr, availBytes)
       if ln != totalBytes:
         raise newException(CborInvalidHeaderError,
           "typed-array byte string length was incorrect: " & $(ln) & " expectd: " & $(count))
