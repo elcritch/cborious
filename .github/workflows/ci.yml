@@ -13,9 +13,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: jiro4989/setup-nim-action@v2
         with:
-          nim-version: '2.2.4'
+          nim-version: '2.2.6'
       - run: atlas init
-      - run: atlas install
+      - run: atlas install --feature:test
       - run: nim test
       - run: nim docs
 
