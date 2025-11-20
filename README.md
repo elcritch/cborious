@@ -107,3 +107,23 @@ nim docs
 ## License
 Licensed under the Apache-2.0 license. See `cborious.nimble` for details.
 
+## Benchmarks
+
+How Cborious stacks up to other Nim based CBOR libraries:
+
+```sh
+> nim c -d:release -r tests/bench_cbor.nim
+cborious:           one-shot size=41 bytes repr=@[164, 98, 105, 100, 24, 42, 100, 110, 97, 109, 101, 104, 78, 105, 109, 32, 85, 115, 101, 114, 102, 97, 99, 116, 105, 118, 101, 245, 102, 115, 99, 111, 114, 101, 115, 133, 1, 2, 3, 5, 8]
+cbor_serialization: one-shot size=41 bytes repr=@[164, 98, 105, 100, 24, 42, 100, 110, 97, 109, 101, 104, 78, 105, 109, 32, 85, 115, 101, 114, 102, 97, 99, 116, 105, 118, 101, 245, 102, 115, 99, 111, 114, 101, 115, 133, 1, 2, 3, 5, 8]
+cbor_em:            one-shot size=41 bytes repr=@[164, 98, 105, 100, 24, 42, 100, 110, 97, 109, 101, 104, 78, 105, 109, 32, 85, 115, 101, 114, 102, 97, 99, 116, 105, 118, 101, 245, 102, 115, 99, 111, 114, 101, 115, 133, 1, 2, 3, 5, 8]
+--- Results (encode + decode round-trip) ---
+cborious:              avg=61787 ns/op total=617 ms
+cbor_serialization:    avg=111621 ns/op total=1116 ms
+cbor_em:               avg=107082 ns/op total=1070 ms
+
+cbor_serialization/cborious: 1.81x for 10000 iterations
+cbor_em/cborious: 1.73x for 10000 iterations
+```
+
+They're all pretty fast but Cborious has a bit of a lead!
+
