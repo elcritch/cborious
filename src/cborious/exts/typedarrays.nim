@@ -12,17 +12,21 @@ import ../objects
 ## tags described by RFC 8746.  It currently provides:
 ##
 ## - Plain-array and typed-array wrappers for tag 40 and tag 1040
-##   (Section 3, multi-dimensional arrays), using either classical CBOR
-##   arrays-of-values or RFC 8746 typed arrays as element storage.
+##   (Section 3.1, multi-dimensional arrays), using either classical
+##   CBOR arrays-of-values or RFC 8746 typed arrays as element storage.
+## - Homogeneous-array helpers for tag 41 (Section 3.2).
 ## - Parsing of the typed-number tag range 64..87 (Section 2.1,
 ##   "Types of Numbers"), exposing the class of number, endianness, and
 ##   element size.
 
 const
-  ## RFC 8746 array tag (1-D vector semantics)
+  ## RFC 8746 multi-dimensional array tag (row-major order)
   CborTagArray* = CborTag(40'u64)
-  ## RFC 8746 multi-dimensional array tag (n-D array semantics)
+  ## RFC 8746 multi-dimensional array tag (column-major order)
   CborTagNdArray* = CborTag(1040'u64)
+
+  ## RFC 8746 homogeneous array tag (Section 3.2).
+  CborTagHomArray* = CborTag(41'u64)
 
   ## RFC 8746 typed array tags for numeric data (Section 2.1).
   ## These correspond to the CDDL typenames in Figure 6.
@@ -89,6 +93,27 @@ template assertShapeMatches(lenData: int, shape: openArray[int]) =
       break
   if prod != lenData:
     raise newException(CborInvalidArgError, "shape does not match data length")
+
+
+# Homogeneous array helpers (Section 3.2) ---------------------------------
+
+proc cborPackHomogeneousArray*[T](s: Stream, vals: openArray[T]) =
+  ## Encode a homogeneous array using RFC 8746 tag 41.
+  ##
+  ## This simply wraps a classical CBOR array (major type 4) in tag 41,
+  ## asserting at the API level that all elements are of the same Nim
+  ## type `T`.
+  s.cborPackTag(CborTagHomArray)
+  s.cborPack(vals)
+
+proc cborUnpackHomogeneousArray*[T](s: Stream, vals: var seq[T]) =
+  ## Decode a homogeneous array that was encoded with
+  ## `cborPackHomogeneousArray` (RFC 8746 tag 41).
+  ##
+  ## On success, `vals` receives the elements of the tagged classical
+  ## CBOR array as a Nim sequence of `T`.
+  s.cborExpectTag(CborTagHomArray)
+  s.cborUnpack(vals)
 
 
 # Multi-dimensional array helpers (Section 3.1.1, row-major) --------------

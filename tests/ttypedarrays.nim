@@ -434,3 +434,34 @@ suite "RFC 8746 array and typed-number tags":
 
     check outShape == shape
     check outData == data
+
+  test "homogeneous array via tag 41 (bools)":
+    let data = @[true, false]
+
+    var s = CborStream.init()
+    s.cborPackHomogeneousArray(data)
+
+    # Check tag and raw bytes: D8 29 82 F5 F4
+    var st = CborStream.init(s.data)
+    var tag: CborTag
+    check st.readOneTag(tag)
+    check tag == CborTagHomArray
+
+    let hex = s.data.toBytes().toHexPretty()
+    check hex == "D8 29 82 F5 F4"
+
+    var st2 = CborStream.init(s.data)
+    var outVals: seq[bool]
+    st2.cborUnpackHomogeneousArray(outVals)
+    check outVals == data
+
+  test "cborUnpackHomogeneousArray rejects missing tag":
+    let data = @[true, false]
+    var s = CborStream.init()
+    # Plain array without tag 41
+    s.cborPack(data)
+
+    var st = CborStream.init(s.data)
+    var outVals: seq[bool]
+    expect CborInvalidHeaderError:
+      st.cborUnpackHomogeneousArray(outVals)
