@@ -115,6 +115,24 @@ proc cborUnpackHomogeneousArray*[T](s: Stream, vals: var seq[T]) =
   s.cborExpectTag(CborTagHomArray)
   s.cborUnpack(vals)
 
+proc cborUnpackHomogeneousArray*[T; N: static[int]](
+    s: Stream, vals: var array[N, T]
+) =
+  ## Decode a homogeneous array into a fixed-size Nim `array[N, T]`.
+  ##
+  ## The encoded homogeneous array MUST have exactly N elements;
+  ## otherwise, a `CborInvalidHeaderError` is raised.
+  var tmp: seq[T]
+  s.cborUnpackHomogeneousArray(tmp)
+  if tmp.len != N:
+    raise newException(CborInvalidHeaderError,
+      "homogeneous array length mismatch; expected " & $N &
+      " elements but got " & $tmp.len)
+  var i = 0
+  while i < N:
+    vals[i] = tmp[i]
+    inc i
+
 
 # Multi-dimensional array helpers (Section 3.1.1, row-major) --------------
 

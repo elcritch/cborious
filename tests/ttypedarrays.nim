@@ -465,3 +465,26 @@ suite "RFC 8746 array and typed-number tags":
     var outVals: seq[bool]
     expect CborInvalidHeaderError:
       st.cborUnpackHomogeneousArray(outVals)
+
+  test "homogeneous array into fixed-size array[N, T]":
+    let data = @[true, false]
+
+    var s = CborStream.init()
+    s.cborPackHomogeneousArray(data)
+
+    var st = CborStream.init(s.data)
+    var outArr: array[2, bool]
+    st.cborUnpackHomogeneousArray(outArr)
+    check outArr[0] == true
+    check outArr[1] == false
+
+  test "homogeneous array fixed-size length mismatch":
+    let data = @[true, false]
+
+    var s = CborStream.init()
+    s.cborPackHomogeneousArray(data)
+
+    var st = CborStream.init(s.data)
+    var outArr: array[1, bool]
+    expect CborInvalidHeaderError:
+      st.cborUnpackHomogeneousArray(outArr)
