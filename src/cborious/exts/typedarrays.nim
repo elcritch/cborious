@@ -67,20 +67,134 @@ type
     clamped*: bool              ## true only for uint8-clamped (tag 68)
 
 template assertShapeMatches(lenData: int, shape: openArray[int]) =
-  when not defined(release):
-    var prod = 1
-    for d in shape:
-      if d < 0:
-        raise newException(CborInvalidArgError, "negative dimension in shape")
-      # avoid overflow exceptions; only check when within bounds
-      if prod > 0 and d > 0 and prod <= (high(int) div max(1, d)):
-        prod = prod * d
-      else:
-        # fall back to best-effort: stop exact multiplication
-        prod = lenData
-        break
+  ## Validate that the product of the dimensions in `shape` matches the
+  ## number of data elements `lenData`.
+  ##
+  ## All dimensions MUST be positive (non-zero).  A best-effort overflow
+  ## guard avoids raising on multiplication overflow by treating an
+  ## overflow as "unknown" and skipping the exact check.
+  var prod = 1
+  for d in shape:
+    if d <= 0:
+      raise newException(CborInvalidArgError,
+        "dimensions must be positive in shape")
+    # avoid overflow exceptions; only check when within bounds
+    if prod > 0 and prod <= (high(int) div d):
+      prod = prod * d
+    else:
+      # fall back to best-effort: stop exact multiplication
+      prod = lenData
+      break
   if prod != lenData:
-      raise newException(CborInvalidArgError, "shape does not match data length")
+    raise newException(CborInvalidArgError, "shape does not match data length")
+
+
+# Multi-dimensional array helpers (Section 3.1.1, row-major) --------------
+
+proc cborPackNdArrayRowMajor*[T](
+    s: Stream, shape: openArray[int], data: openArray[T]
+) =
+  ## Encode a multi-dimensional array using RFC 8746 tag 40 (row-major
+  ## order), with the elements stored as a classical CBOR array
+  ## (major type 4) of values.
+  ##
+  ## `shape` gives the list of dimensions; `data` contains the flattened
+  ## elements in row-major order (last dimension contiguous).
+
+  if shape.len == 0:
+    raise newException(CborInvalidArgError,
+      "multi-dimensional array shape must contain at least one dimension")
+
+  assertShapeMatches(data.len, shape)
+
+  # Tag 40: multi-dimensional array, row-major order
+  s.cborPackTag(CborTagArray)
+
+  # Outer array(2): [ dimensions, elements ]
+  cborPackInt(s, 2'u64, CborMajor.Array)
+
+  # First element: dimensions as an array of unsigned integers
+  cborPackInt(s, uint64(shape.len), CborMajor.Array)
+  for d in shape:
+    cborPackInt(s, uint64(d), CborMajor.Unsigned)
+
+  # Second element: classical CBOR array of values in row-major order
+  s.cborPack(data)
+
+proc cborUnpackNdArrayRowMajor*[T](
+    s: Stream, shapeOut: var seq[int], dataOut: var seq[T]
+) =
+  ## Decode a multi-dimensional array that was encoded with
+  ## `cborPackNdArrayRowMajor` (RFC 8746 tag 40, row-major order).
+  ##
+  ## On success, `shapeOut` receives the list of dimensions and
+  ## `dataOut` the flattened elements in row-major order.
+
+  # Expect tag 40; allow a leading self-described CBOR tag.
+  s.cborExpectTag(CborTagArray)
+
+  # Outer array(2): [ dimensions, elements ]
+  let (majOuter, aiOuter) = s.readInitial()
+  if majOuter != CborMajor.Array:
+    raise newException(CborInvalidHeaderError,
+      "expected outer array for multi-dimensional array")
+
+  if aiOuter == AiIndef:
+    raise newException(CborInvalidHeaderError,
+      "indefinite-length outer array not supported for multi-dimensional array")
+
+  let outerLen = int(s.readAddInfo(aiOuter))
+  if outerLen != 2:
+    raise newException(CborInvalidHeaderError,
+      "multi-dimensional array outer array must contain exactly two elements")
+
+  # First element: dimensions array
+  let (majDims, aiDims) = s.readInitial()
+  if majDims != CborMajor.Array:
+    raise newException(CborInvalidHeaderError,
+      "expected dimensions array for multi-dimensional array")
+
+  if aiDims == AiIndef:
+    raise newException(CborInvalidHeaderError,
+      "indefinite-length dimensions array not supported for multi-dimensional array")
+
+  let dimsLen = int(s.readAddInfo(aiDims))
+  if dimsLen <= 0:
+    raise newException(CborInvalidHeaderError,
+      "multi-dimensional array must have at least one dimension")
+
+  shapeOut.setLen(dimsLen)
+  for i in 0 ..< dimsLen:
+    var dimVal: uint64
+    s.cborUnpack(dimVal)
+    if dimVal == 0'u64:
+      raise newException(CborInvalidHeaderError,
+        "dimensions must be non-zero in multi-dimensional array")
+    if dimVal > uint64(high(int)):
+      raise newException(CborOverflowError,
+        "dimension value too large for host int")
+    shapeOut[i] = int(dimVal)
+
+  # Second element: classical CBOR array of values (row-major)
+  let (majVals, aiVals) = s.readInitial()
+  if majVals != CborMajor.Array:
+    raise newException(CborInvalidHeaderError,
+      "multi-dimensional array elements must be a CBOR array")
+
+  if aiVals == AiIndef:
+    raise newException(CborInvalidHeaderError,
+      "indefinite-length element arrays are not supported for multi-dimensional array")
+
+  let nVals = int(s.readAddInfo(aiVals))
+  if nVals < 0:
+    raise newException(CborInvalidHeaderError,
+      "negative length for multi-dimensional array elements")
+
+  dataOut.setLen(nVals)
+  for i in 0 ..< nVals:
+    s.cborUnpack(dataOut[i])
+
+  assertShapeMatches(dataOut.len, shapeOut)
 
 proc typedNumberTagFor*[T: SomeInteger | SomeFloat](
     endian: TypedNumberEndian; clamped = false
@@ -390,4 +504,3 @@ proc cborUnpackTypedArray*[X](
   else:
     {.error:
       "unsupported element byte width for typed-array element".}
-

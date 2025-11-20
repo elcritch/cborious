@@ -304,3 +304,41 @@ suite "RFC 8746 array and typed-number tags":
       for item in outBe.mitems():
         swapEndian64(addr(item), addr(item))
     check outLe == dataIn
+
+  test "multi-dimensional array via tag 40 (row-major, basic arrays)":
+    # Example based on RFC 8746 Figure 2: two-dimensional uint values
+    # encoded as a multi-dimensional array tag (row-major order) with
+    # a classical CBOR array of elements.
+
+    let shape = @[2, 3]
+    let data  = @[2, 4, 8, 4, 16, 256]
+
+    var s = CborStream.init()
+    s.cborPackNdArrayRowMajor(shape, data)
+
+    # Check raw CBOR bytes: D8 28 (tag 40), then
+    #   82                 # array(2)
+    #     82               # array(2) dimensions
+    #       02             # 2 (first dimension)
+    #       03             # 3 (second dimension)
+    #     86               # array(6) elements
+    #       02 04 08 04 10 19 01 00
+    let hex = s.data.toBytes().toHexPretty()
+    check hex == "D8 28 82 82 02 03 86 02 04 08 04 10 19 01 00"
+
+    # Decode back to shape and data (row-major)
+    var st = CborStream.init(s.data)
+    var outShape: seq[int]
+    var outData: seq[int]
+    st.cborUnpackNdArrayRowMajor(outShape, outData)
+
+    check outShape == shape
+    check outData == data
+
+  test "multi-dimensional array shape must match data length":
+    let shape = @[2, 3]
+    let data  = @[1, 2, 3, 4]  # 4 != 2 * 3
+
+    var s = CborStream.init()
+    expect CborInvalidArgError:
+      s.cborPackNdArrayRowMajor(shape, data)
