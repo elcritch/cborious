@@ -375,3 +375,62 @@ suite "RFC 8746 array and typed-number tags":
     var s = CborStream.init()
     expect CborInvalidArgError:
       s.cborPackNdArrayRowMajor(shape, data)
+
+  test "multi-dimensional array via tag 1040 (column-major, basic arrays)":
+    # Example based on RFC 8746 Figure 3: two-dimensional uint values
+    # encoded as a multi-dimensional array tag (column-major order) with
+    # a classical CBOR array of elements.
+
+    let shape = @[2, 3]
+    # Column-major order: [2,4,4,16,8,256]
+    let data  = @[2, 4, 4, 16, 8, 256]
+
+    var s = CborStream.init()
+    s.cborPackNdArrayColumnMajor(shape, data)
+
+    # Tag 1040 encodes as D9 04 10, followed by the same structure as
+    # the row-major variant but with element order changed to column
+    # major:
+    #   82                 # array(2)
+    #     82               # array(2) dimensions
+    #       02             # 2 (first dimension)
+    #       03             # 3 (second dimension)
+    #     86               # array(6) elements
+    #       02 04 04 10 08 19 01 00
+    let hex = s.data.toBytes().toHexPretty()
+    check hex == "D9 04 10 82 82 02 03 86 02 04 04 10 08 19 01 00"
+
+    # Decode back to shape and data (column-major)
+    var st = CborStream.init(s.data)
+    var outShape: seq[int]
+    var outData: seq[int]
+    st.cborUnpackNdArrayColumnMajor(outShape, outData)
+
+    check outShape == shape
+    check outData == data
+
+  test "multi-dimensional array via tag 1040 with typed array":
+    # Column-major variant using a typed uint16 big-endian array as the
+    # element storage, mirroring the structure of the row-major typed
+    # example but with the element order changed.
+
+    let shape = @[2, 3]
+    let data  = @[uint16(2), uint16(4), uint16(4),
+                  uint16(16), uint16(8), uint16(256)]
+
+    var s = CborStream.init()
+    s.cborPackNdArrayColumnMajorTyped(shape, data, bigEndian)
+
+    let hex = s.data.toBytes().toHexPretty()
+    # Tag 1040 (D9 04 10), then the same dimension header as for the
+    # row-major case, followed by tag 65 for the uint16 BE typed array
+    # and a 12-byte big-endian payload in column-major order.
+    check hex == "D9 04 10 82 82 02 03 D8 41 4C 00 02 00 04 00 04 00 10 00 08 01 00"
+
+    var st = CborStream.init(s.data)
+    var outShape: seq[int]
+    var outData: seq[uint16]
+    st.cborUnpackNdArrayColumnMajor(outShape, outData)
+
+    check outShape == shape
+    check outData == data
