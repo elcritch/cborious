@@ -9,6 +9,12 @@ If you're unfamiliar with CBOR checkout the [CBOR Book](https://cborbook.com/int
 - Deterministic and canonical encoding modes following [RFC 8949](docs/rfc8949.md)
 - Compile-time encode/decode derivation for Nim types
 - Liberal decode mode for interoperability
+- Tag Extension Support
+
+### Tag Extensions
+
+- DateTime and Timestamp 
+- Typed Arrays: [RFC8746](https://www.ietf.org/rfc/rfc8746.html)
 
 ## Installation
 Requires Nim >= 2.0.14.
