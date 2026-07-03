@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.7.1"
+version       = "0.7.2"
 author        = "Jaremy Creechley"
 description   = "A new awesome nimble package"
 license       = "Apache-2.0"
@@ -16,5 +16,5 @@ feature "test":
 
 feature "benchmark":
   requires "https://github.com/elcritch/nim-cbor-serialization.git"
-  requires "https://git.sr.ht/~ehmry/nim_cbor"
+  # requires "https://git.sr.ht/~ehmry/nim_cbor"
   requires "msgpack4nim"
