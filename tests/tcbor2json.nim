@@ -147,3 +147,7 @@ suite "cbor2json conversions":
       let enc = fromJsonNode(j)
       let d = fromCbor(enc, float64)
       check isNaN(d)
+
+  test "reject truncated indefinite arrays":
+    expect IOError:
+      discard toJsonNode("\x9f\x01")

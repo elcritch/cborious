@@ -75,3 +75,7 @@ suite "EDN pretty printer":
     # Array: 0x9f, 1, 2, break
     let indefArr = "\x9f\x01\x02\xff"
     check ednDump(indefArr) == "[1, 2]"
+
+  test "reject truncated indefinite arrays":
+    expect IOError:
+      discard ednDump("\x9f\x01")

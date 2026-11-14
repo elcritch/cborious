@@ -54,7 +54,7 @@ proc quoteJsonLike(s: string): string =
 proc readIndefBreak(s: Stream): bool =
   # Peek one byte; return true if it is break (0xFF). Consumes it when true.
   let pos = s.getPosition()
-  let b = s.readChar()
+  let b = s.readExactChar()
   if uint8(ord(b)) == 0xff'u8:
     return true
   s.setPosition(pos)
@@ -109,7 +109,7 @@ proc readChunkLocal(s: Stream, majExpected: CborMajor, ai: uint8): string =
     var acc = ""
     while true:
       let pos = s.getPosition()
-      let b = s.readChar()
+      let b = s.readExactChar()
       if uint8(ord(b)) == 0xff'u8: break
       s.setPosition(pos)
       let (m2, ai2) = s.readInitial()
@@ -141,7 +141,7 @@ proc ednFloatSimple(s: Stream, ai: uint8): string =
   of 22'u8: return "null"
   of 23'u8: return "undefined"
   of 24'u8:
-    let v = uint8(s.readChar())
+    let v = uint8(s.readExactChar())
     return "simple(" & $v & ")"
   of 25'u8:
     let bits = s.unstore16()

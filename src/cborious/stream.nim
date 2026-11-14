@@ -170,6 +170,17 @@ proc init*(x: typedesc[CborStream], cap: int = 0): CborStream =
   ## Initialize a CborStream with capacity.
   result = init(x, newStringOfCap(cap))
 
+proc readExactChar*(s: Stream): char =
+  ## Read one byte, raising IOError on EOF instead of treating it as zero.
+  when nimvm:
+    var buf = " "
+    if s.readDataStr(buf, 0 .. 0) != 1:
+      raise newException(IOError, "unexpected end of CBOR input")
+    result = buf[0]
+  else:
+    if s.readData(addr result, 1) != 1:
+      raise newException(IOError, "unexpected end of CBOR input")
+
 proc readExactStr*(s: Stream, length: int): string =
   ## Reads a string from a stream, like `Stream.readStr`, but raises IOError if it's truncated.
   result = readStr(s, length)

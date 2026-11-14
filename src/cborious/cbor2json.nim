@@ -18,7 +18,7 @@ proc conversionError(msg: string): ref ValueError =
 proc readIndefBreak(s: Stream): bool =
   ## Return true if the next byte is the CBOR break (0xFF); consumes it.
   let pos = s.getPosition()
-  let b = s.readChar()
+  let b = s.readExactChar()
   if uint8(ord(b)) == 0xff'u8:
     return true
   s.setPosition(pos)
@@ -30,7 +30,7 @@ proc readChunkLocal(s: Stream, majExpected: CborMajor, ai: uint8): string =
     var acc = ""
     while true:
       let pos = s.getPosition()
-      let b = s.readChar()
+      let b = s.readExactChar()
       if uint8(ord(b)) == 0xff'u8:
         break
       s.setPosition(pos)
@@ -129,7 +129,7 @@ proc toJsonNode*(s: Stream, options: set[CborJsonOptions] = {}): JsonNode =
       # Represent undefined explicitly to preserve distinction from null
       result = newJNull()
     of 24'u8:
-      let v = uint8(s.readChar())
+      let v = uint8(s.readExactChar())
       let o = newJObject()
       o.add("type", newJString("simple"))
       o.add("value", newJInt(BiggestInt(v)))

@@ -519,3 +519,18 @@ suite "sets (canonical + roundtrip)":
     check toCbor(s3) == expected3
     let d3 = fromCbor(toCbor(s3), set[Status])
     check d3 == s3
+
+  test "truncated single-byte reads are rejected":
+    for data in ["", "\x18", "\xd8"]:
+      expect IOError:
+        discard fromCbor(data, uint64)
+    expect IOError:
+      discard fromCbor("\x38", int64)
+    check fromCbor("\x00", uint64) == 0
+    check fromCbor("\x18\x00", uint64) == 0
+
+  test "truncated indefinite containers are rejected":
+    expect IOError:
+      discard fromCbor("\x9f\x01", seq[int])
+    expect IOError:
+      discard fromCbor("\x7f\x61a", string)
