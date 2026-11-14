@@ -113,7 +113,7 @@ proc cborPack*(s: Stream, val: float64) =
 # ---- Decoding ----
 
 proc readInitial*(s: Stream): tuple[major: CborMajor, ai: uint8] =
-  let b = uint8(ord(s.readChar()))
+  let b = uint8(ord(s.readExactChar()))
   result.major = CborMajor(b shr 5)
   result.ai = b and 0x1f
 
@@ -122,7 +122,7 @@ proc readAddInfo*(s: Stream, ai: uint8): uint64 =
   if ai < 24'u8:
     result = uint64(ai)
   elif ai == 24'u8:
-    result = uint64(uint8(s.readChar()))
+    result = uint64(uint8(s.readExactChar()))
   elif ai == 25'u8:
     result = uint64(s.unstore16())
   elif ai == 26'u8:
@@ -373,7 +373,7 @@ proc readChunk(s: Stream, majExpected: CborMajor, ai: uint8): string =
     var acc = ""
     while true:
       let pos = s.getPosition()
-      let b = s.readChar()
+      let b = s.readExactChar()
       if uint8(ord(b)) == 0xff'u8: # break
         break
       s.setPosition(pos)
@@ -439,7 +439,7 @@ proc cborUnpack*[T](s: Stream, val: var seq[T]) =
     val.setLen(0)
     while true:
       let pos = s.getPosition()
-      let b = s.readChar()
+      let b = s.readExactChar()
       if uint8(ord(b)) == 0xff'u8: break
       s.setPosition(pos)
       var item: T
@@ -468,7 +468,7 @@ proc cborUnpackImpl*[K, V](s: Stream, val: var SomeMap[K, V]) =
   if ai == AiIndef:
     while true:
       let pos = s.getPosition()
-      let b = s.readChar()
+      let b = s.readExactChar()
       if uint8(ord(b)) == 0xff'u8: break
       s.setPosition(pos)
       var k: K
@@ -501,7 +501,7 @@ proc skipIndefChunks(s: Stream, majExpected: CborMajor) =
   ## Skip chunks of an indefinite-length byte/text string until break (0xff).
   while true:
     let pos = s.getPosition()
-    let b = s.readChar()
+    let b = s.readExactChar()
     if uint8(ord(b)) == 0xff'u8:
       break
     s.setPosition(pos)
@@ -527,7 +527,7 @@ proc skipCborMsg*(s: Stream) =
     if ai == AiIndef:
       while true:
         let pos = s.getPosition()
-        let b = s.readChar()
+        let b = s.readExactChar()
         if uint8(ord(b)) == 0xff'u8: break
         s.setPosition(pos)
         s.skipCborMsg()
@@ -541,7 +541,7 @@ proc skipCborMsg*(s: Stream) =
     if ai == AiIndef:
       while true:
         let pos = s.getPosition()
-        let b = s.readChar()
+        let b = s.readExactChar()
         if uint8(ord(b)) == 0xff'u8: break
         s.setPosition(pos)
         s.skipCborMsg() # key
@@ -558,7 +558,7 @@ proc skipCborMsg*(s: Stream) =
     s.skipCborMsg()              # skip tagged item
   of CborMajor.Simple:
     case ai
-    of 24'u8: discard s.readChar()
+    of 24'u8: discard s.readExactChar()
     of 25'u8: discard s.unstore16()
     of 26'u8: discard s.unstore32()
     of 27'u8: discard s.unstore64()
@@ -660,7 +660,7 @@ proc cborUnpack*[T](s: Stream, val: var set[T]) =
   if ai == AiIndef:
     while true:
       let pos = s.getPosition()
-      let b = s.readChar()
+      let b = s.readExactChar()
       if uint8(ord(b)) == 0xff'u8: break
       s.setPosition(pos)
       var x: T

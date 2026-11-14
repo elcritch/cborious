@@ -180,7 +180,7 @@ proc cborUnpackObjectArray[T](s: Stream, val: var T) {.inline.} =
       s.cborUnpack undistinctUnpack(field)
       inc i
     # consume break
-    let b = s.readChar()
+    let b = s.readExactChar()
     if uint8(ord(b)) != 0xff'u8:
       raise newException(CborInvalidHeaderError, "missing break in indefinite array")
   else:
@@ -198,7 +198,7 @@ proc cborUnpackObjectMap[T](s: Stream, val: var T) {.inline.} =
   if ai == AiIndef:
     while true:
       let pos = s.getPosition()
-      let b = s.readChar()
+      let b = s.readExactChar()
       if uint8(ord(b)) == 0xff'u8: break
       s.setPosition(pos)
       var key: string

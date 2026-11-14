@@ -757,7 +757,7 @@ proc cborUnpackTypedArray*[X](
     # Consume payload to leave stream at end of the byte string.
     var skipped = 0
     while skipped < totalBytes:
-      discard s.readChar()
+      discard s.readExactChar()
       inc skipped
     raise newException(CborInvalidHeaderError,
       "typed-array byte string length not a multiple of element size")
@@ -765,7 +765,7 @@ proc cborUnpackTypedArray*[X](
   if info.elementBytes > 8:
     var skipped = 0
     while skipped < totalBytes:
-      discard s.readChar()
+      discard s.readExactChar()
       inc skipped
     raise newException(CborInvalidHeaderError,
       "unsupported element byte width for typed-array decode: " & $info.elementBytes)
